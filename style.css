@@ -9,16 +9,10 @@
     --cyan-dim: rgba(56, 189, 248, 0.1);
 }
 
-* {
-    box-sizing: border-box;
-}
-
 body, html {
     margin: 0; padding: 0; font-family: 'JetBrains Mono', monospace;
     background-color: var(--bg-dark); color: white; scroll-behavior: smooth;
     height: 100%; width: 100%;
-    overflow: hidden;
-    -webkit-tap-highlight-color: transparent;
 }
 
 /* NAVBAR TÁCTICO */
@@ -56,10 +50,9 @@ body, html {
 /* INTERFAZ DE LA APP Y SIDEBAR */
 #app-container { display: flex; height: 100vh; width: 100%; position: fixed; top: 0; left: 0; z-index: 4000; }
 #sidebar { 
-    width: 280px; background: var(--panel-bg); border-right: 1px solid #1e293b; 
+    width: 320px; background: var(--panel-bg); border-right: 1px solid #1e293b; 
     padding: 20px 15px; display: flex; flex-direction: column; box-sizing: border-box; 
     overflow-y: auto;
-    z-index: 1000;
 }
 #map { flex-grow: 1; height: 100%; background: #000; }
 
@@ -77,43 +70,50 @@ body, html {
     font-weight: bold;
 }
 
+/* ==========================================
+   REDISEÑO AVANZADO DE TÍTULOS MILITARES (HUD)
+   ========================================== */
 #sidebar h3 {
     font-family: 'Oswald', sans-serif;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     color: #e2e8f0;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     margin: 10px 0 12px 0; 
     padding-bottom: 8px;
     position: relative;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     font-weight: 700;
     border-bottom: 1px solid #1e293b;
     text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
 }
 
+/* Título específico de Operaciones del Operador */
 #sidebar h3:not(#admin-panel h3) {
     color: var(--cyan-tactical);
 }
 
+/* Título específico del Panel del Administrador (Mando Primario) */
 #admin-panel h3 {
     color: var(--gold);
     text-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
     margin-top: 5px; 
 }
 
+/* Reducción de espacio en el contenedor de administración */
 #admin-panel {
     margin-top: 0px;
     padding-top: 0px;
 }
 
+/* Indicador de bloque táctico (Estilo Terminal de Datos) */
 #sidebar h3::before {
     content: "";
     display: inline-block;
-    width: 5px;
-    height: 16px;
+    width: 6px;
+    height: 18px;
     background: var(--cyan-tactical);
     border-radius: 1px;
     animation: h3-pulse 2s infinite ease-in-out;
@@ -123,12 +123,13 @@ body, html {
     background: var(--gold);
 }
 
+/* Sub-línea decorativa inferior (Marco HUD Cortado) */
 #sidebar h3::after {
     content: "";
     position: absolute;
     bottom: -1px;
     left: 0;
-    width: 35px;
+    width: 45px;
     height: 2px;
     background: var(--cyan-tactical);
 }
@@ -137,72 +138,81 @@ body, html {
     background: var(--gold);
 }
 
+/* Animación de respiración para los bloques de datos */
 @keyframes h3-pulse {
     0%, 100% { opacity: 0.6; transform: scaleX(1); }
     50% { opacity: 1; transform: scaleX(1.3); }
 }
 
-/* CONSOLA DE COMANDO */
+/* WRAPPER Y CONSOLA DE COMANDO ACCESIBLE */
 #console-wrapper {
-    position: absolute; bottom: 10px; left: 10px; right: 10px; 
-    z-index: 4500; display: flex; flex-direction: column; gap: 5px;
+    position: absolute; bottom: 20px; left: 340px; right: 180px; 
+    z-index: 4500; display: flex; flex-direction: column; gap: 6px;
     box-sizing: border-box;
 }
-#console-container { height: 100px; background: rgba(10,12,15,0.95); border: 1px solid #334155; border-radius: 4px; }
-#console-header { background: var(--gold); color: black; padding: 5px 10px; font-weight: bold; font-size: 0.7rem; letter-spacing: 1px; font-family: 'Oswald', sans-serif; border-radius: 3px 3px 0 0; }
-#console-body { padding: 8px; font-size: 0.7rem; color: var(--aliado-color); overflow-y: auto; height: 70px; font-family: 'JetBrains Mono'; }
+#console-container { height: 120px; background: rgba(10,12,15,0.95); border: 1px solid #334155; }
+#console-header { background: var(--gold); color: black; padding: 5px 10px; font-weight: bold; font-size: 0.8rem; letter-spacing: 1px; font-family: 'Oswald', sans-serif; }
+#console-body { padding: 10px; font-size: 0.8rem; color: var(--aliado-color); overflow-y: auto; height: 85px; font-family: 'JetBrains Mono'; }
 
+/* BOTÓN DE LIMPIEZA LOCAL DE LA CONSOLA */
 #btn-clear-console {
     align-self: flex-start; background: rgba(20, 24, 29, 0.9);
     border: 1px dashed #4b5563; color: #94a3b8; font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; font-weight: bold; padding: 4px 10px; cursor: pointer;
+    font-size: 11px; font-weight: bold; padding: 6px 14px; cursor: pointer;
     letter-spacing: 1px; transition: all 0.2s ease;
-    border-radius: 3px;
 }
 #btn-clear-console:hover {
     border-style: solid; border-color: var(--gold); color: var(--gold);
-    background: var(--gold-dim);
+    background: var(--gold-dim); box-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
 }
 
-/* BRÚJULA */
+/* HUD DE BRÚJULA TÁCTICA INTERACTIVA */
 #compass-hud {
-    position: absolute; bottom: 10px; right: 10px; width: 90px; height: 80px;
+    position: absolute; bottom: 20px; right: 20px; width: 140px; height: 120px;
     background: rgba(10, 12, 15, 0.95); border: 1px solid var(--gold); z-index: 4500;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     cursor: pointer; font-family: 'JetBrains Mono', monospace; box-shadow: 0 0 20px rgba(0,0,0,0.8);
     transition: 0.2s ease;
-    border-radius: 4px;
+    will-change: transform;
 }
 #compass-hud:hover { border-color: #fff; background: var(--panel-bg); }
 
 #compass-rose {
-    width: 45px; height: 45px; border: 1px dashed rgba(251, 191, 36, 0.4);
+    width: 65px; height: 65px; border: 1px dashed rgba(251, 191, 36, 0.4);
     border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center;
 }
 
 #compass-needle {
-    font-size: 14px; color: var(--enemigo-color);
+    font-size: 18px; color: var(--enemigo-color);
     transition: transform 0.1s linear; transform: rotate(-45deg); 
 }
 
-.cardinal { position: absolute; font-size: 8px; font-weight: bold; color: #94a3b8; }
+.cardinal { position: absolute; font-size: 10px; font-weight: bold; color: #94a3b8; }
 .cardinal.north { top: 2px; color: var(--enemigo-color); }
 .cardinal.east { right: 4px; }
 .cardinal.south { bottom: 2px; }
 .cardinal.west { left: 4px; }
 
-#compass-bearing { font-size: 8px; color: var(--gold); font-weight: bold; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
+#compass-bearing { font-size: 10px; color: var(--gold); font-weight: bold; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
-/* MODALES */
+/* MODALES MILITARES */
 .modal { display: none; position: fixed; z-index: 5000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); backdrop-filter: blur(3px); }
-.modal-content { position: relative; width: 90%; max-width: 450px; max-height: 85vh; margin: 10% auto; padding: 20px; overflow-y: auto; box-shadow: 0 0 50px rgba(0,0,0,1); border-radius: 8px; }
+.modal-content { position: relative; width: 450px; max-height: 85vh; margin: 5% auto; padding: 30px; overflow-y: auto; box-shadow: 0 0 50px rgba(0,0,0,1); }
 
+/* FRAME ESPECIAL DE ALERTA PROFESIONAL */
 .alert-frame {
     border: 2px solid #ef4444 !important;
     background: rgb(17, 12, 16) !important;
     box-shadow: 0 0 35px rgba(239, 68, 68, 0.25) !important;
 }
 
+@keyframes pulse-alert {
+    0% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 10px #ef4444); }
+    100% { transform: scale(1); opacity: 0.9; }
+}
+
+/* Efecto de escaneo para modales */
 .modal-content::after {
     content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
     background: var(--gold-dim); animation: scan 4s linear infinite; pointer-events: none;
@@ -211,79 +221,85 @@ body, html {
 @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
 
 input, select { 
-    width: 100%; padding: 10px; margin: 8px 0; background: #0a0c0f !important; 
+    width: 100%; padding: 12px; margin: 10px 0; background: #0a0c0f !important; 
     border: 1px solid #334155 !important; color: var(--gold) !important; font-family: inherit; box-sizing: border-box; transition: 0.3s;
-    border-radius: 4px;
 }
 input:focus { border-color: var(--gold) !important; outline: none; background: #14181d !important; }
 
-/* BOTONES */
-.btn-main-faction { width: 100%; padding: 10px; margin: 5px 0; cursor: pointer; font-weight: bold; border: none; font-family: 'Oswald'; text-transform: uppercase; font-size: 0.85rem; border-radius: 4px; }
+/* BOTONES OPERATIVOS */
+.btn-main-faction { width: 100%; padding: 12px; margin: 5px 0; cursor: pointer; font-weight: bold; border: none; font-family: 'Oswald'; text-transform: uppercase; }
 .aliado { background: #064e3b; color: var(--aliado-color); border-left: 4px solid var(--aliado-color); }
 .enemigo { background: #450a0a; color: var(--enemigo-color); border-left: 4px solid var(--enemigo-color); }
 
-.btn-asset-select { background: #1a1f26; color: white; border: 1px solid #334155; padding: 8px; cursor: pointer; font-family: inherit; font-size: 0.75rem; border-radius: 4px; }
+.btn-asset-select { background: #1a1f26; color: white; border: 1px solid #334155; padding: 10px; cursor: pointer; font-family: inherit; font-size: 0.8rem; }
 .btn-asset-select:hover { border-color: var(--gold); background: var(--gold-dim); }
 
-.btn-export { background: var(--gold); color: black; border: none; padding: 10px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; font-family: 'Oswald'; transition: 0.3s; border-radius: 4px; }
+.btn-export { background: var(--gold); color: black; border: none; padding: 10px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; font-family: 'Oswald'; transition: 0.3s; }
 .btn-export:hover { background: #f59e0b; }
 
-.btn-danger-outline { background: transparent; border: 1px solid #ef4444; color: #ef4444; padding: 10px; width: 100%; cursor: pointer; margin-top: 5px; font-family: inherit; transition: 0.3s; border-radius: 4px; }
+.btn-danger-outline { background: transparent; border: 1px solid #ef4444; color: #ef4444; padding: 10px; width: 100%; cursor: pointer; margin-top: 5px; font-family: inherit; transition: 0.3s; }
 .btn-danger-outline:hover { background: #ef4444; color: white; }
 
-.close { color: white; float: right; font-size: 24px; font-weight: bold; cursor: pointer; }
+.close { color: white; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
 .close:hover { color: var(--gold); }
 
-/* SELECTOR DE CAPAS */
+/* SELECTOR DE CAPAS CONFIGURADO */
 .leaflet-control-layers {
     background: rgba(20, 24, 29, 0.95) !important; color: var(--gold) !important;
     border: 1px solid #334155 !important; font-family: 'JetBrains Mono', monospace !important;
-    font-size: 11px !important; border-radius: 4px !important; padding: 6px !important; box-shadow: 0 0 15px rgba(0,0,0,0.5) !important;
+    font-size: 11px !important; border-radius: 0px !important; padding: 8px !important; box-shadow: 0 0 15px rgba(0,0,0,0.5) !important;
 }
 .leaflet-control-layers-toggle { filter: invert(1) brightness(0.9) sepia(1) hue-rotate(340deg) saturate(3); }
+.leaflet-control-layers-list label { margin-bottom: 4px; cursor: pointer; display: block; }
 
-/* TABLA PERSONAL */
+/* ==========================================
+   DISEÑO AVANZADO INTEGRADO: RTDB TERMINAL 
+   ========================================== */
 #tabla-personal tbody tr {
     border-bottom: 1px solid #1e293b;
     background: #07090c;
     transition: background 0.2s ease;
 }
+
 #tabla-personal tbody tr:hover {
     background: rgba(251, 191, 36, 0.05) !important; 
 }
+
 #tabla-personal tbody tr:nth-child(even) {
     background: #0b0e14; 
 }
+
 #tabla-personal th, #tabla-personal td {
     border-bottom: 1px solid #1e293b;
-    padding: 8px 6px;
-    font-size: 0.7rem;
 }
 
-/* BADGES */
+/* Etiquetas (Badges) de Rangos del Sistema */
 .badge-rango {
-    padding: 2px 6px;
-    font-size: 9px;
+    padding: 3px 8px;
+    font-size: 11px;
     font-weight: bold;
     border-radius: 2px;
     letter-spacing: 1px;
     display: inline-block;
     text-transform: uppercase;
 }
+
 .badge-admin { 
     background: rgba(251, 191, 36, 0.12) !important; 
     color: var(--gold) !important; 
     border: 1px solid rgba(251, 191, 36, 0.4) !important; 
 }
+
 .badge-operador { 
     background: rgba(56, 189, 248, 0.12) !important; 
     color: var(--cyan-tactical) !important; 
     border: 1px solid rgba(56, 189, 248, 0.4) !important; 
 }
 
+/* Envoltura con Scrollbar Personalizado para la Tabla */
 .db-table-wrapper::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
 }
 .db-table-wrapper::-webkit-scrollbar-track {
     background: #0a0c0f;
@@ -296,7 +312,9 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
     background: var(--gold);
 }
 
-/* BARRA DE BÚSQUEDA */
+/* ==========================================
+   BARRA DE BÚSQUEDA - ESCRITORIO
+   ========================================== */
 .coord-search-bar {
     position: absolute;
     top: 15px;
@@ -304,69 +322,109 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
     z-index: 4500;
     background: rgba(10, 12, 15, 0.95);
     border: 1px solid var(--gold);
-    padding: 4px 8px;
+    padding: 5px 8px;
     display: flex;
-    gap: 6px;
-    border-radius: 6px;
+    gap: 8px;
+    border-radius: 4px;
     backdrop-filter: blur(5px);
 }
 
 .coord-search-bar input {
-    width: 220px;
+    width: 260px;
     margin: 0 !important;
-    padding: 5px 8px !important;
-    font-size: 11px;
+    padding: 6px 8px !important;
+    font-size: 12px;
 }
 
 .coord-search-bar button {
     background: var(--gold);
     color: black;
     border: none;
-    padding: 5px 10px;
+    padding: 6px 12px;
     cursor: pointer;
     font-weight: bold;
     font-family: inherit;
-    border-radius: 4px;
-    font-size: 11px;
 }
-
-/* ANIMACIÓN MARCADOR TEMPORAL */
-@keyframes pulse {
-    0% { transform: scale(0.8); opacity: 1; }
-    50% { transform: scale(1.3); opacity: 0.7; }
-    100% { transform: scale(0.8); opacity: 1; }
-}
-.temp-marker { animation: pulse 1s ease-in-out infinite; }
 
 /* ==========================================
-   RESPONSIVE PARA CELULARES (ANDROID/iOS)
+   ANIMACIÓN PARA EL MARCADOR TEMPORAL DE BÚSQUEDA
+   ========================================== */
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
+}
+
+.temp-marker {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* ==========================================
+   ICONO DE CUARTEL
+   ========================================== */
+.cuartel-icon {
+    background: #1e3a8a;
+    border: 2px solid var(--gold);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+}
+
+/* ==========================================
+   BOTÓN MENÚ MÓVIL
+   ========================================== */
+#menu-toggle {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 10001;
+    background: var(--gold);
+    color: black;
+    border: none;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 20px;
+    border-radius: 4px;
+}
+
+/* ==========================================
+   RESPONSIVE PARA CELULARES (HASTA 768px)
    ========================================== */
 @media (max-width: 768px) {
-    /* Navbar */
     #navbar {
-        padding: 8px 12px;
+        padding: 10px 15px;
     }
     .logo {
-        font-size: 0.9rem;
+        font-size: 1rem;
     }
     .nav-auth button {
-        padding: 4px 8px;
-        font-size: 0.6rem;
-        margin-left: 5px;
+        padding: 5px 10px;
+        font-size: 0.7rem;
     }
-    
-    /* Hero */
     .hero-overlay h1 {
-        font-size: 1.2rem;
-        letter-spacing: 2px;
+        font-size: 1.5rem;
     }
     .hero-overlay p {
-        font-size: 0.65rem;
-        letter-spacing: 2px;
+        font-size: 0.8rem;
     }
     .hero-overlay {
         padding: 20px;
-        margin: 0 15px;
+        margin: 0 20px;
     }
     
     /* Sidebar colapsable */
@@ -376,36 +434,25 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
         transition: left 0.3s ease;
         z-index: 10000;
         height: 100%;
-        width: 260px;
-        background: rgba(17, 20, 24, 0.98);
-        backdrop-filter: blur(5px);
+        width: 280px;
     }
     #sidebar.open {
         left: 0;
     }
     #menu-toggle {
         display: block !important;
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        z-index: 10001;
-        background: var(--gold);
-        color: black;
-        border: none;
-        padding: 8px 10px;
-        cursor: pointer;
-        font-size: 16px;
-        border-radius: 4px;
     }
     
-    /* Barra de búsqueda - mejorada para móvil */
+    /* ==========================================
+       BARRA DE BÚSQUEDA EN CELULAR - CENTRADA ARRIBA
+       ========================================== */
     .coord-search-bar {
         position: fixed;
-        top: 55px;
+        top: 60px;
         left: 50%;
         transform: translateX(-50%);
         width: 90%;
-        max-width: 300px;
+        max-width: 320px;
         z-index: 4500;
         background: rgba(10, 12, 15, 0.98);
         border: 1px solid var(--gold);
@@ -416,12 +463,14 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
         backdrop-filter: blur(10px);
         box-shadow: 0 0 15px rgba(0,0,0,0.5);
     }
+    
     .coord-search-bar input {
         width: 100%;
         font-size: 12px;
         padding: 8px 12px !important;
         border-radius: 20px;
     }
+    
     .coord-search-bar button {
         padding: 8px 14px;
         font-size: 12px;
@@ -433,22 +482,15 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
     #compass-hud {
         bottom: 10px;
         right: 10px;
-        width: 70px;
-        height: 65px;
+        width: 100px;
+        height: 90px;
     }
     #compass-rose {
-        width: 35px;
-        height: 35px;
-    }
-    #compass-needle {
-        font-size: 11px;
+        width: 50px;
+        height: 50px;
     }
     #compass-bearing {
-        font-size: 6px;
-        margin-top: 3px;
-    }
-    .cardinal {
-        font-size: 6px;
+        font-size: 8px;
     }
     
     /* Consola más pequeña */
@@ -458,37 +500,21 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
         bottom: 10px;
     }
     #console-container {
-        height: 85px;
+        height: 100px;
     }
     #console-body {
-        height: 55px;
-        font-size: 0.6rem;
-    }
-    #console-header {
-        font-size: 0.6rem;
-        padding: 4px 8px;
-    }
-    #btn-clear-console {
-        font-size: 9px;
-        padding: 3px 8px;
+        height: 65px;
+        font-size: 0.7rem;
     }
     
-    /* Modales */
+    /* Modales más pequeños */
     .modal-content {
         width: 95% !important;
-        margin: 15% auto !important;
+        margin: 10% auto !important;
         padding: 15px !important;
-        border-radius: 12px !important;
     }
     .modal-content h2 {
-        font-size: 1.1rem;
-    }
-    .modal-content input, .modal-content select {
-        padding: 8px !important;
-        font-size: 13px;
-    }
-    .input-label {
-        font-size: 0.65rem;
+        font-size: 1.2rem;
     }
     
     /* Botones más compactos */
@@ -497,7 +523,7 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
         font-size: 0.75rem;
     }
     .btn-asset-select {
-        padding: 6px;
+        padding: 8px;
         font-size: 0.7rem;
     }
     
@@ -507,45 +533,23 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
         padding: 4px !important;
     }
     
-    /* Tabla personal - horizontal scroll */
+    /* Tabla personal - scroll horizontal */
     .db-table-wrapper {
         overflow-x: auto;
     }
     #tabla-personal th, #tabla-personal td {
-        font-size: 0.6rem;
-        padding: 5px 4px;
+        font-size: 0.65rem;
+        padding: 6px 4px;
         white-space: nowrap;
     }
-    
-    /* Icono de menú */
-    #menu-toggle {
-        display: block !important;
-    }
-    
-    /* Ajustes del mapa */
-    .leaflet-control-zoom {
-        display: none;
-    }
 }
 
-/* Icono de cuartel */
-.cuartel-icon {
-    background: #1e3a8a;
-    border: 2px solid var(--gold);
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
-}
-
-/* Ajustes extra para móviles muy pequeños */
+/* ==========================================
+   RESPONSIVE PARA PANTALLAS MUY PEQUEÑAS (≤480px)
+   ========================================== */
 @media (max-width: 480px) {
     .coord-search-bar {
-        top: 50px;
+        top: 55px;
         width: 95%;
         padding: 5px 8px;
     }
@@ -558,29 +562,23 @@ input:focus { border-color: var(--gold) !important; outline: none; background: #
         font-size: 11px;
     }
     #compass-hud {
-        width: 60px;
-        height: 55px;
-        bottom: 8px;
-        right: 8px;
+        width: 85px;
+        height: 80px;
     }
     #compass-rose {
-        width: 30px;
-        height: 30px;
-    }
-    #console-wrapper {
-        bottom: 8px;
+        width: 42px;
+        height: 42px;
     }
     #console-container {
-        height: 75px;
+        height: 90px;
     }
     #console-body {
-        height: 45px;
+        height: 55px;
+        font-size: 0.65rem;
     }
-}
-
-/* Ocultar elementos innecesarios en móvil para mejor UX */
-@media (max-width: 768px) {
-    .leaflet-control-zoom {
-        display: none;
+    .modal-content {
+        width: 98% !important;
+        margin: 15% auto !important;
+        padding: 12px !important;
     }
 }
