@@ -14,22 +14,30 @@
       "use": "@vercel/static"
     },
     {
-      "src": "assets/**",
+      "src": "assets/*.png",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets/*.jpg",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets/*.jpeg",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets/*.svg",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets/*.webp",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/(.*\\.js)",
-      "dest": "/$1"
-    },
-    {
-      "src": "/(.*\\.css)",
-      "dest": "/$1"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/$1"
     }
   ]
 }
