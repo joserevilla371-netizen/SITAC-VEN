@@ -22,6 +22,335 @@ let tempSearchMarker = null;
 let moveAnimations = {};
 let isAdminUser = false;
 
+
+
+
+
+// ============================================================
+// ===== SISTEMA DE LOGS Y TRAZABILIDAD =====
+// ============================================================
+
+const LOG_LEVELS = {
+    INFO: 'INFO',
+    WARN: 'WARN',
+    ERROR: 'ERROR',
+    DEBUG: 'DEBUG',
+    SUCCESS: 'SUCCESS'
+};
+
+class Logger {
+    constructor() {
+        this.logs = [];
+        this.maxLogs = 1000;
+    }
+
+    /**
+     * Genera un timestamp formateado para los logs
+     */
+    getTimestamp() {
+        const now = new Date();
+        return now.toISOString().replace('T', ' ').substring(0, 19);
+    }
+
+    /**
+     * Formatea un mensaje de log
+     */
+    formatMessage(level, message, data = null) {
+        const timestamp = this.getTimestamp();
+        let logEntry = `[${level}] [${timestamp}] ${message}`;
+        
+        if (data) {
+            if (typeof data === 'object') {
+                try {
+                    logEntry += ` | Datos: ${JSON.stringify(data)}`;
+                } catch (e) {
+                    logEntry += ` | Datos: [No serializable]`;
+                }
+            } else {
+                logEntry += ` | Datos: ${data}`;
+            }
+        }
+        
+        return logEntry;
+    }
+
+    /**
+     * Guarda un log en memoria y lo muestra en consola con colores
+     */
+    log(level, message, data = null) {
+        const formatted = this.formatMessage(level, message, data);
+        
+        // Guardar en memoria
+        this.logs.push({
+            timestamp: this.getTimestamp(),
+            level,
+            message,
+            data: data || null,
+            formatted
+        });
+        
+        // Limitar cantidad de logs
+        if (this.logs.length > this.maxLogs) {
+            this.logs.shift();
+        }
+        
+        // Mostrar en consola con colores según nivel
+        switch(level) {
+            case LOG_LEVELS.ERROR:
+                console.error(`%c${formatted}`, 'color: #ef4444; font-weight: bold;');
+                break;
+            case LOG_LEVELS.WARN:
+                console.warn(`%c${formatted}`, 'color: #fbbf24; font-weight: bold;');
+                break;
+            case LOG_LEVELS.SUCCESS:
+                console.log(`%c${formatted}`, 'color: #4ade80; font-weight: bold;');
+                break;
+            case LOG_LEVELS.INFO:
+                console.log(`%c${formatted}`, 'color: #38bdf8;');
+                break;
+            case LOG_LEVELS.DEBUG:
+                console.log(`%c${formatted}`, 'color: #94a3b8; font-style: italic;');
+                break;
+            default:
+                console.log(formatted);
+        }
+        
+        // También mostrar en la consola del sistema (si existe)
+        try {
+            if (typeof addLog !== 'undefined' && addLog) {
+                addLog(formatted);
+            }
+        } catch (e) {
+            // Si addLog no está disponible, ignorar
+        }
+        
+        return formatted;
+    }
+
+    /**
+     * Log de información general
+     */
+    info(message, data = null) {
+        return this.log(LOG_LEVELS.INFO, message, data);
+    }
+
+    /**
+     * Log de advertencia
+     */
+    warn(message, data = null) {
+        return this.log(LOG_LEVELS.WARN, message, data);
+    }
+
+    /**
+     * Log de error
+     */
+    error(message, data = null) {
+        return this.log(LOG_LEVELS.ERROR, message, data);
+    }
+
+    /**
+     * Log de éxito
+     */
+    success(message, data = null) {
+        return this.log(LOG_LEVELS.SUCCESS, message, data);
+    }
+
+    /**
+     * Log de depuración
+     */
+    debug(message, data = null) {
+        return this.log(LOG_LEVELS.DEBUG, message, data);
+    }
+
+    /**
+     * Obtener todos los logs guardados
+     */
+    getLogs() {
+        return this.logs;
+    }
+
+    /**
+     * Obtener logs filtrados por nivel
+     */
+    getLogsByLevel(level) {
+        return this.logs.filter(log => log.level === level);
+    }
+
+    /**
+     * Limpiar logs
+     */
+    clearLogs() {
+        this.logs = [];
+        console.log('%c🧹 Logs limpiados', 'color: #94a3b8;');
+    }
+
+    /**
+     * Exportar logs a texto
+     */
+    exportLogs() {
+        return this.logs.map(log => log.formatted).join('\n');
+    }
+}
+
+// ============================================================
+// ===== INSTANCIAR EL LOGGER GLOBAL =====
+// ============================================================
+
+const logger = new Logger();
+
+// Exponer logger globalmente para usarlo en todo el código
+window.logger = logger;
+
+// Log de inicio del sistema
+logger.info('🚀 Sistema SITAC VEN inicializado');
+logger.info(`📅 Fecha: ${new Date().toLocaleString()}`);
+logger.info(`🌐 Navegador: ${navigator.userAgent}`);
+
+// ============================================================
+// ===== MANEJADOR GLOBAL DE ERRORES =====
+// ============================================================
+
+/**
+ * Captura errores no manejados en el código
+ */
+window.addEventListener('error', function(event) {
+    const error = event.error || event.message || 'Error desconocido';
+    const filename = event.filename || 'desconocido';
+    const lineno = event.lineno || '?';
+    const colno = event.colno || '?';
+    
+    logger.error(`🔥 Error no capturado en ${filename}:${lineno}:${colno}`, {
+        error: error.toString ? error.toString() : error,
+        filename,
+        lineno,
+        colno
+    });
+    
+    // Mostrar alerta amigable al usuario (solo si es admin)
+    if (isAdminUser && typeof showTacticalAlert !== 'undefined') {
+        showTacticalAlert(
+            '⚠️ ERROR DEL SISTEMA',
+            `Se ha detectado un error interno.\n\n${error.toString ? error.toString().substring(0, 150) : error}\n\n🔍 Revisa la consola para más detalles.`,
+            '⚠️',
+            '#ef4444'
+        );
+    }
+    
+    // Evitar que el error rompa la página
+    event.preventDefault();
+    return true;
+});
+
+/**
+ * Captura promesas rechazadas no manejadas
+ */
+window.addEventListener('unhandledrejection', function(event) {
+    const reason = event.reason || 'Promesa rechazada sin razón';
+    
+    logger.error(`❌ Promesa rechazada no manejada: ${reason.toString ? reason.toString().substring(0, 200) : reason}`);
+    
+    // Evitar que el error rompa la página
+    event.preventDefault();
+    return true;
+});
+
+/**
+ * Función de utilidad para ejecutar código con try/catch automático
+ */
+function ejecutarConSeguridad(fn, nombreFuncion = 'función anónima', datos = null) {
+    try {
+        const resultado = fn();
+        logger.debug(`✅ ${nombreFuncion} ejecutada correctamente`, datos);
+        return resultado;
+    } catch (error) {
+        logger.error(`❌ Error en ${nombreFuncion}: ${error.message || error}`, {
+            error: error.message || error,
+            stack: error.stack,
+            datos
+        });
+        
+        // Devolver un valor por defecto según el tipo esperado
+        if (typeof resultadoEsperado === 'undefined') {
+            return null;
+        }
+        return null;
+    }
+}
+
+/**
+ * Función para validar datos de entrada
+ */
+function validarDato(dato, tipo, campo = 'dato') {
+    try {
+        switch(tipo) {
+            case 'string':
+                if (typeof dato !== 'string') {
+                    logger.warn(`⚠️ ${campo} debe ser string, recibido: ${typeof dato}`, { dato });
+                    return false;
+                }
+                return true;
+            case 'number':
+                if (typeof dato !== 'number' || isNaN(dato)) {
+                    logger.warn(`⚠️ ${campo} debe ser número, recibido: ${typeof dato}`, { dato });
+                    return false;
+                }
+                return true;
+            case 'object':
+                if (typeof dato !== 'object' || dato === null) {
+                    logger.warn(`⚠️ ${campo} debe ser objeto, recibido: ${typeof dato}`, { dato });
+                    return false;
+                }
+                return true;
+            case 'array':
+                if (!Array.isArray(dato)) {
+                    logger.warn(`⚠️ ${campo} debe ser array, recibido: ${typeof dato}`, { dato });
+                    return false;
+                }
+                return true;
+            case 'email':
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(dato)) {
+                    logger.warn(`⚠️ ${campo} debe ser email válido, recibido: ${dato}`);
+                    return false;
+                }
+                return true;
+            case 'cedula':
+                const cedulaStr = String(dato).replace(/\D/g, '');
+                if (cedulaStr.length < 7 || cedulaStr.length > 8) {
+                    logger.warn(`⚠️ ${campo} debe tener 7-8 dígitos, recibido: ${dato}`);
+                    return false;
+                }
+                return true;
+            default:
+                return true;
+        }
+    } catch (error) {
+        logger.error(`❌ Error validando ${campo}: ${error.message}`, { dato, tipo });
+        return false;
+    }
+}
+
+// Log de inicio del logger
+logger.info('✅ Sistema de logs y trazabilidad inicializado');
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Detecta si una coordenada está en agua o en tierra
+ * @param {number} lat - Latitud de la coordenada
+ * @param {number} lng - Longitud de la coordenada
+ * @returns {boolean} true si está en agua, false si está en tierra
+ * @description Utiliza zonas predefinidas de Venezuela para determinar si el punto está en agua
+ */
+
 // ============================================================
 // ===== FUNCIÓN MEJORADA DE DETECCIÓN DE AGUA =====
 // ============================================================
@@ -104,6 +433,30 @@ function estaEnAgua(lat, lng) {
 }
 // ============================================================
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Valida una cédula venezolana (7-8 dígitos numéricos)
+ * @param {HTMLInputElement} input - Elemento input que contiene la cédula
+ * @returns {boolean} true si la cédula es válida, false si no
+ * @example
+ * const input = document.getElementById('cedula');
+ * const esValida = validarCedula(input);
+ * if (esValida) { console.log('Cédula correcta'); }
+ */
+
 function validarCedula(input) {
     const valor = input.value;
     const helper = document.getElementById('cedula-helper');
@@ -115,6 +468,17 @@ function validarCedulaAdmin(input) {
     const helper = document.getElementById('cedula-helper-admin');
     return validarCedulaGenerica(valor, helper);
 }
+
+
+
+
+/**
+ * Valida una cédula genérica con formato numérico
+ * @param {string} valor - Valor de la cédula a validar
+ * @param {HTMLElement} helper - Elemento HTML para mostrar mensajes de ayuda
+ * @returns {boolean} true si la cédula es válida, false si no
+ * @description Esta función verifica que la cédula tenga entre 7 y 8 dígitos
+ */
 
 function validarCedulaGenerica(valor, helper) {
     const soloNumeros = valor.replace(/\D/g, '');
@@ -152,6 +516,18 @@ function validarCedulaGenerica(valor, helper) {
         return false;
     }
 }
+
+
+
+
+
+
+/**
+ * Valida una contraseña con requisitos de seguridad
+ * @param {HTMLInputElement} input - Elemento input que contiene la contraseña
+ * @returns {boolean} true si la contraseña es válida, false si no
+ * @description Requisitos: 8 caracteres, al menos 1 letra, 1 número y 1 signo
+ */
 
 function validarContrasena(input) {
     const valor = input.value;
@@ -2906,3 +3282,56 @@ if (document.readyState === 'loading') {
 } else {
     verificarSesionYcargar();
 }
+
+
+
+// ============================================================
+// ===== SISTEMA DE EMERGENCIAS =====
+// ============================================================
+
+/**
+ * Función de emergencia para reiniciar el sistema en caso de error crítico
+ */
+function emergenciaReiniciarSistema() {
+    try {
+        logger.warn('🚨 INICIANDO PROTOCOLO DE EMERGENCIA');
+        
+        // Limpiar logs
+        if (typeof logger !== 'undefined' && logger.clearLogs) {
+            logger.clearLogs();
+        }
+        
+        // Recargar la página
+        window.location.reload();
+    } catch (error) {
+        console.error('Error en protocolo de emergencia:', error);
+        window.location.reload();
+    }
+}
+
+/**
+ * Función para exportar logs a un archivo (útil para diagnóstico)
+ */
+function exportarLogs() {
+    try {
+        if (typeof logger !== 'undefined' && logger.exportLogs) {
+            const logs = logger.exportLogs();
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `logs_sitac_${new Date().toISOString().substring(0, 10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            logger.success('✅ Logs exportados correctamente');
+        }
+    } catch (error) {
+        console.error('Error exportando logs:', error);
+    }
+}
+
+// Exponer funciones de emergencia globalmente
+window.emergenciaReiniciarSistema = emergenciaReiniciarSistema;
+window.exportarLogs = exportarLogs;
+
+logger.info('✅ Sistema de emergencias inicializado');

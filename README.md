@@ -39,3 +39,15 @@ flowchart TB
     style Cliente fill:#1a2332,stroke:#fbbf24,color:#fff
     style Servicios fill:#0f172a,stroke:#3b82f6,color:#fff
     style Mapas fill:#0f172a,stroke:#4ade80,color:#fff
+
+
+    ## 📚 Documentación Técnica
+
+### Generar documentación automática
+
+El sistema utiliza **JSDoc** para generar documentación técnica a partir de los comentarios en el código.
+
+#### Instalación
+
+```bash
+npm install
