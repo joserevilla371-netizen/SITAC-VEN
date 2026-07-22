@@ -1,6 +1,11 @@
-// config.example.js - Copiar a config.js y poner valores reales
-const FIREBASE_CONFIG = {
-    apiKey: "TU_API_KEY",
+// ============================================================
+// ===== CONFIGURACIÓN DEL SISTEMA (EJEMPLO) =====
+// ============================================================
+// ⚠️ Copia este archivo como config.js y pon tus credenciales reales
+// ⚠️ NUNCA subas config.js a GitHub (está en .gitignore)
+
+const firebaseConfig = {
+    apiKey: "TU_API_KEY_DE_FIREBASE",
     authDomain: "TU_AUTH_DOMAIN",
     databaseURL: "TU_DATABASE_URL",
     projectId: "TU_PROJECT_ID",
