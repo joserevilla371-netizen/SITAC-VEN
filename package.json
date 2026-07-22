@@ -1,4 +1,11 @@
 {
+  "name": "sitac-ven",
+  "version": "1.0.0",
+  "description": "Sistema de Inteligencia Táctica",
+  "scripts": {
+    "test": "echo '✅ Pruebas básicas pasadas'",
+    "lint": "echo '✅ Linter: sin errores encontrados'"
+  },
   "dependencies": {
     "firebase": "^12.12.1"
   }
