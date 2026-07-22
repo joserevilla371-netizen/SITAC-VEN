@@ -1,27 +1,16 @@
-# Dependencias de Node
+# Configuración local (NO SUBIR)
+config.js
+
+# Dependencias
 node_modules/
-package-lock.json
 
-# Archivos de configuración local
+# Archivos de sistema
+.DS_Store
+*.log
+
+# VS Code
 .vscode/
-.idea/
-*.code-workspace
 
-# Variables de entorno (credenciales)
+# Variables de entorno
 .env
 .env.local
-.env.*.local
-
-# Archivos del sistema
-.DS_Store
-Thumbs.db
-*.log
-*.tmp
-
-# Firebase (por seguridad)
-firebase-debug.log
-.firebase/
-
-# Archivos de caché
-.cache/
-*.cache
