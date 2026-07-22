@@ -1,0 +1,66 @@
+# ============================================================
+# CI - INTEGRACIÓN CONTINUA
+# ============================================================
+# Se ejecuta automáticamente cuando:
+# - Se abre un Pull Request hacia main
+# - Se hace push a cualquier rama
+# ============================================================
+
+name: CI - Integración Continua
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ===== PASO 1: DESCARGAR CÓDIGO =====
+      - name: 📥 Descargar código
+        uses: actions/checkout@v3
+      
+      # ===== PASO 2: CONFIGURAR NODE =====
+      - name: 📦 Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      # ===== PASO 3: INSTALAR DEPENDENCIAS =====
+      - name: 📦 Instalar dependencias
+        run: npm install
+      
+      # ===== PASO 4: EJECUTAR PRUEBAS =====
+      - name: 🧪 Ejecutar pruebas unitarias
+        run: npm test
+      
+      # ===== PASO 5: VERIFICAR SINTAXIS =====
+      - name: 🔍 Verificar sintaxis de JavaScript
+        run: |
+          echo "🔍 Verificando archivos JavaScript..."
+          find . -name "*.js" -not -path "./node_modules/*" -exec node -c {} \;
+      
+      # ===== PASO 6: VALIDAR ESTRUCTURA =====
+      - name: 📁 Validar estructura del proyecto
+        run: |
+          echo "📁 Validando archivos requeridos..."
+          [ -f "index.html" ] && echo "✅ index.html encontrado"
+          [ -f "script.js" ] && echo "✅ script.js encontrado"
+          [ -f "style.css" ] && echo "✅ style.css encontrado"
+          [ -f "README.md" ] && echo "✅ README.md encontrado"
+      
+      # ===== PASO 7: RESUMEN =====
+      - name: ✅ Resumen del pipeline
+        run: |
+          echo "=========================================="
+          echo "  🚀 PIPELINE DE CI COMPLETADO"
+          echo "=========================================="
+          echo "✅ Código descargado"
+          echo "✅ Dependencias instaladas"
+          echo "✅ Pruebas ejecutadas"
+          echo "✅ Sintaxis verificada"
+          echo "✅ Estructura validada"
+          echo "=========================================="
