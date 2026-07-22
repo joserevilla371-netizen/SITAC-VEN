@@ -1,6 +1,27 @@
+# Dependencias de Node
 node_modules/
-.DS_Store
-*.log
+package-lock.json
+
+# Archivos de configuración local
 .vscode/
-firebase-debug.log
+.idea/
+*.code-workspace
+
+# Variables de entorno (credenciales)
 .env
+.env.local
+.env.*.local
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# Firebase (por seguridad)
+firebase-debug.log
+.firebase/
+
+# Archivos de caché
+.cache/
+*.cache
