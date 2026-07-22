@@ -64,4 +64,39 @@ docs(readme): actualizar instrucciones de instalación
    git pull origin develop
    git checkout -b feature/nueva-funcionalidad
 
-   
+   ## 📝 CONVENTIONAL COMMITS
+
+Todos los commits deben seguir el estándar de **Conventional Commits** con referencia a tareas.
+
+### Formato
+
+<tipo>(<alcance>): <descripción breve> (Tarea #XX)
+
+
+### Tipos de commits
+
+| Tipo | Uso |
+|------|-----|
+| `feat` | Nueva funcionalidad |
+| `fix` | Corrección de error |
+| `docs` | Documentación |
+| `style` | Formato/estilo (no afecta lógica) |
+| `refactor` | Refactorización |
+| `test` | Pruebas |
+| `chore` | Mantenimiento |
+| `ci` | CI/CD |
+| `deploy` | Despliegue |
+
+### Ejemplos
+
+```bash
+# ✅ VÁLIDO
+git commit -m "feat(auth): agregar registro de usuarios (Tarea #5)"
+git commit -m "fix(map): corregir validación de coordenadas (Tarea #8)"
+git commit -m "docs(readme): actualizar instrucciones de instalación (Tarea #15)"
+
+# ❌ INVÁLIDO
+git commit -m "cambios"
+git commit -m "arregle cosas"
+git commit -m "update"
+
