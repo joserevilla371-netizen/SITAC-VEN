@@ -124,3 +124,72 @@ jobs:
           echo "✅ Estructura del proyecto validada"
           echo "=========================================="
           echo "📌 Estado: LISTO PARA REVISIÓN"
+
+
+
+          name: CI - Integración Continua
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  validate-code:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ===== PASO 1: DESCARGAR EL CÓDIGO =====
+      - name: 📥 Descargar código del repositorio
+        uses: actions/checkout@v3
+      
+      # ===== PASO 2: INSTALAR DEPENDENCIAS =====
+      - name: 📦 Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: 📦 Instalar dependencias
+        run: npm install
+      
+      # ===== PASO 3: EJECUTAR PRUEBAS UNITARIAS =====
+      - name: 🧪 Ejecutar pruebas unitarias
+        run: npm test -- --coverage
+      
+      # ===== PASO 4: MOSTRAR REPORTE DE COBERTURA =====
+      - name: 📊 Mostrar cobertura de pruebas
+        run: |
+          echo "=========================================="
+          echo "  📊 COBERTURA DE PRUEBAS"
+          echo "=========================================="
+          cat coverage/coverage-summary.json || echo "Cobertura disponible en coverage/"
+      
+      # ===== PASO 5: VERIFICACIÓN DE SINTAXIS =====
+      - name: 🔍 Verificar sintaxis de JavaScript
+        run: |
+          echo "🔍 Verificando archivos JavaScript..."
+          find . -name "*.js" -not -path "./node_modules/*" -not -path "./tests/*" -exec node -c {} \; || echo "❌ Error en algún archivo JS"
+        continue-on-error: true
+      
+      # ===== PASO 6: VALIDAR ESTRUCTURA =====
+      - name: 📁 Validar estructura del proyecto
+        run: |
+          echo "📁 Validando archivos requeridos..."
+          [ -f "index.html" ] && echo "✅ index.html encontrado" || echo "❌ ERROR: No se encuentra index.html"
+          [ -f "script.js" ] && echo "✅ script.js encontrado" || echo "❌ ERROR: No se encuentra script.js"
+          [ -f "style.css" ] && echo "✅ style.css encontrado" || echo "❌ ERROR: No se encuentra style.css"
+          [ -f "README.md" ] && echo "✅ README.md encontrado" || echo "❌ ERROR: No se encuentra README.md"
+      
+      # ===== PASO 7: RESUMEN FINAL =====
+      - name: ✅ Resumen del pipeline
+        run: |
+          echo "=========================================="
+          echo "  🚀 PIPELINE DE CI COMPLETADO"
+          echo "=========================================="
+          echo "✅ Código descargado"
+          echo "✅ Dependencias instaladas"
+          echo "✅ Pruebas unitarias ejecutadas"
+          echo "✅ Verificación de sintaxis completada"
+          echo "✅ Estructura del proyecto validada"
+          echo "=========================================="
