@@ -1,9 +1,6 @@
+# Configuración de producción (generada)
+config.production.js
 
----
-
-## 🚀 PASO 5: CREAR `.gitignore` ACTUALIZADO
-
-```gitignore
 # Documentación generada
 docs/
 
@@ -24,3 +21,5 @@ config.js
 # Variables de entorno
 .env
 .env.local
+.env.production
+.vercel

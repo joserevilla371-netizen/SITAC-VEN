@@ -3,18 +3,23 @@
   "version": "1.0.0",
   "description": "Sistema de Inteligencia Táctica",
   "scripts": {
+    "build": "node build.js",
+    "start": "npx serve .",
     "test": "jest",
     "test:watch": "jest --watch",
     "doc": "jsdoc -c jsdoc.json",
     "doc:serve": "npx serve docs",
-    "lint": "echo '✅ Linter: sin errores encontrados'"
+    "lint": "echo '✅ Linter: sin errores encontrados'",
+    "predeploy": "npm run build",
+    "deploy": "vercel --prod"
   },
   "dependencies": {
     "firebase": "^12.12.1"
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "jsdoc": "^4.0.5"
+    "jsdoc": "^4.0.5",
+    "serve": "^14.0.0"
   },
   "jest": {
     "testEnvironment": "jsdom",

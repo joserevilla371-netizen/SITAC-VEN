@@ -1,21 +1,153 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyB6_AyF5fm4Lp4o9qcenSXjBVLCheo5zVM",
-    authDomain: "sitac-ven-5f4c5.firebaseapp.com",
-    databaseURL: "https://sitac-ven-5f4c5-default-rtdb.firebaseio.com",
-    projectId: "sitac-ven-5f4c5",
-    storageBucket: "sitac-ven-5f4c5.firebasestorage.app",
-    messagingSenderId: "591770629715",
-    appId: "1:591770629715:web:a06df0a310d957e66a38a6",
-    measurementId: "G-9RW7HYGV11"
-};
+// ============================================================
+// ===== CONFIGURACIÓN DE ENTORNO (PRODUCCIÓN vs LOCAL) =====
+// ============================================================
 
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+let FIREBASE_CONFIG = null;
+let TELEGRAM_TOKEN = null;
+let CHAT_ID = null;
+
+// DETECTAR ENTORNO
+const isProduction = window.location.hostname !== 'localhost' && 
+                     window.location.hostname !== '127.0.0.1' &&
+                     !window.location.hostname.includes('file://');
+
+console.log(`🔍 Entorno: ${isProduction ? 'PRODUCCIÓN' : 'LOCAL'}`);
+
+if (isProduction) {
+    // ===== MODO PRODUCCIÓN =====
+    // Las variables vienen de config.production.js (inyectadas por Vercel/Netlify)
+    try {
+        if (typeof window.FIREBASE_CONFIG !== 'undefined' && window.FIREBASE_CONFIG) {
+            FIREBASE_CONFIG = window.FIREBASE_CONFIG;
+            TELEGRAM_TOKEN = window.TELEGRAM_TOKEN || '';
+            CHAT_ID = window.CHAT_ID || '';
+            console.log('✅ Configuración cargada desde variables de entorno (producción)');
+        } else {
+            console.warn('⚠️ No se encontraron variables de entorno en producción');
+        }
+    } catch (e) {
+        console.error('❌ Error cargando variables de entorno:', e);
+    }
+} else {
+    // ===== MODO LOCAL =====
+    // Intentar cargar config.js (archivo local, NO subido a GitHub)
+    try {
+        if (typeof window.FIREBASE_CONFIG !== 'undefined' && window.FIREBASE_CONFIG) {
+            FIREBASE_CONFIG = window.FIREBASE_CONFIG;
+            TELEGRAM_TOKEN = window.TELEGRAM_TOKEN || '';
+            CHAT_ID = window.CHAT_ID || '';
+            console.log('✅ Configuración cargada desde config.js (local)');
+        } else {
+            console.warn('⚠️ No se encontró config.js, usando credenciales de respaldo');
+            // Credenciales de respaldo (solo para desarrollo local)
+            FIREBASE_CONFIG = {
+                apiKey: "AIzaSyB6_AyF5fm4Lp4o9qcenSXjBVLCheo5zVM",
+                authDomain: "sitac-ven-5f4c5.firebaseapp.com",
+                databaseURL: "https://sitac-ven-5f4c5-default-rtdb.firebaseio.com",
+                projectId: "sitac-ven-5f4c5",
+                storageBucket: "sitac-ven-5f4c5.firebasestorage.app",
+                messagingSenderId: "591770629715",
+                appId: "1:591770629715:web:a06df0a310d957e66a38a6",
+                measurementId: "G-9RW7HYGV11"
+            };
+            TELEGRAM_TOKEN = "8999344580:AAHs_rdFtbSamjQ19PxjhBJBLgCINWCMkkM";
+            CHAT_ID = "8075741065";
+        }
+    } catch (e) {
+        console.error('❌ Error cargando configuración local:', e);
+    }
 }
+
+// ===== VALIDAR CONFIGURACIÓN =====
+if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.apiKey) {
+    console.error('❌ ERROR: No se pudo cargar la configuración de Firebase');
+    
+    if (isProduction) {
+        // En producción, mostrar mensaje de error amigable
+        document.body.innerHTML = `
+            <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                background: #0a0c0f;
+                color: #ef4444;
+                font-family: 'Inter', sans-serif;
+                padding: 20px;
+                text-align: center;
+            ">
+                <div>
+                    <div style="font-size: 60px; margin-bottom: 20px;">🔒</div>
+                    <h1 style="font-size: 24px; margin-bottom: 10px;">Error de Configuración</h1>
+                    <p style="color: #94a3b8; max-width: 500px;">
+                        El sistema no pudo cargar la configuración.<br>
+                        Verifica que las variables de entorno estén configuradas.
+                    </p>
+                </div>
+            </div>
+        `;
+        throw new Error('Configuración de Firebase no disponible en producción');
+    }
+}
+
+// ===== INICIALIZAR FIREBASE =====
+try {
+    if (!firebase.apps.length && FIREBASE_CONFIG) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        console.log('✅ Firebase inicializado correctamente');
+    } else if (firebase.apps.length) {
+        console.log('ℹ️ Firebase ya estaba inicializado');
+    } else {
+        throw new Error('No se pudo inicializar Firebase: configuración inválida');
+    }
+} catch (error) {
+    console.error('❌ Error inicializando Firebase:', error);
+    if (isProduction) {
+        document.body.innerHTML = `
+            <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                background: #0a0c0f;
+                color: #ef4444;
+                font-family: 'Inter', sans-serif;
+                padding: 20px;
+                text-align: center;
+            ">
+                <div>
+                    <div style="font-size: 60px; margin-bottom: 20px;">🔥</div>
+                    <h1 style="font-size: 24px; margin-bottom: 10px;">Error de Conexión</h1>
+                    <p style="color: #94a3b8; max-width: 500px;">
+                        No se pudo conectar con la base de datos.<br>
+                        Error: ${error.message}
+                    </p>
+                </div>
+            </div>
+        `;
+        throw error;
+    }
+}
+
 const db = firebase.database();
 
-const TELEGRAM_TOKEN = "8999344580:AAHs_rdFtbSamjQ19PxjhBJBLgCINWCMkkM";
-const CHAT_ID = "8075741065";
+// ===== ASIGNAR VARIABLES GLOBALES =====
+const TELEGRAM_TOKEN_FINAL = TELEGRAM_TOKEN || '';
+const CHAT_ID_FINAL = CHAT_ID || '';
+
+window.TELEGRAM_TOKEN = TELEGRAM_TOKEN_FINAL;
+window.CHAT_ID = CHAT_ID_FINAL;
+
+var TELEGRAM_TOKEN = TELEGRAM_TOKEN_FINAL;
+var CHAT_ID = CHAT_ID_FINAL;
+
+console.log('📡 Sistema listo');
+console.log(`🔐 Modo: ${isProduction ? 'PRODUCCIÓN' : 'LOCAL'}`);
+console.log(`📡 Firebase: ${FIREBASE_CONFIG ? 'Conectado' : 'ERROR'}`);
+
+
+
+
 
 let pendingMoveMarkerId = null;
 let tempSearchMarker = null;
