@@ -9,7 +9,6 @@
 |---------|------|
 | 📦 Repositorio GitHub | [https://github.com/joserevilla371-netizen/SITAC-VEN](https://github.com/joserevilla371-netizen/SITAC-VEN) |
 | 🚀 Sistema en producción | [https://sitac-ven.vercel.app](https://sitac-ven.vercel.app) |
-| 📚 Documentación técnica | [https://sitac-ven.vercel.app/docs](https://sitac-ven.vercel.app/docs) (si generaste docs) |
 
 
 ### 1. Diagrama de Arquitectura General
