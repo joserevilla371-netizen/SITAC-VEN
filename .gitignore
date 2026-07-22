@@ -1,27 +1,25 @@
-# Dependencias de Node
+# Configuración de producción (generada)
+config.production.js
+
+# Documentación generada
+docs/
+
+# Dependencias
 node_modules/
 package-lock.json
 
-# Archivos de configuración local
-.vscode/
-.idea/
-*.code-workspace
+# Configuración local (NO SUBIR)
+config.js
 
-# Variables de entorno (credenciales)
+# Archivos de sistema
+.DS_Store
+*.log
+
+# VS Code
+.vscode/
+
+# Variables de entorno
 .env
 .env.local
-.env.*.local
-
-# Archivos del sistema
-.DS_Store
-Thumbs.db
-*.log
-*.tmp
-
-# Firebase (por seguridad)
-firebase-debug.log
-.firebase/
-
-# Archivos de caché
-.cache/
-*.cache
+.env.production
+.vercel

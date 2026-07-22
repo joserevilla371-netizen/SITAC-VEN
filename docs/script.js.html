@@ -1,4 +1,32 @@
-const firebaseConfig = {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: script.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: script.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const firebaseConfig = {
     apiKey: "AIzaSyB6_AyF5fm4Lp4o9qcenSXjBVLCheo5zVM",
     authDomain: "sitac-ven-5f4c5.firebaseapp.com",
     databaseURL: "https://sitac-ven-5f4c5-default-rtdb.firebaseio.com",
@@ -22,11 +50,340 @@ let tempSearchMarker = null;
 let moveAnimations = {};
 let isAdminUser = false;
 
+
+
+
+
+// ============================================================
+// ===== SISTEMA DE LOGS Y TRAZABILIDAD =====
+// ============================================================
+
+const LOG_LEVELS = {
+    INFO: 'INFO',
+    WARN: 'WARN',
+    ERROR: 'ERROR',
+    DEBUG: 'DEBUG',
+    SUCCESS: 'SUCCESS'
+};
+
+class Logger {
+    constructor() {
+        this.logs = [];
+        this.maxLogs = 1000;
+    }
+
+    /**
+     * Genera un timestamp formateado para los logs
+     */
+    getTimestamp() {
+        const now = new Date();
+        return now.toISOString().replace('T', ' ').substring(0, 19);
+    }
+
+    /**
+     * Formatea un mensaje de log
+     */
+    formatMessage(level, message, data = null) {
+        const timestamp = this.getTimestamp();
+        let logEntry = `[${level}] [${timestamp}] ${message}`;
+        
+        if (data) {
+            if (typeof data === 'object') {
+                try {
+                    logEntry += ` | Datos: ${JSON.stringify(data)}`;
+                } catch (e) {
+                    logEntry += ` | Datos: [No serializable]`;
+                }
+            } else {
+                logEntry += ` | Datos: ${data}`;
+            }
+        }
+        
+        return logEntry;
+    }
+
+    /**
+     * Guarda un log en memoria y lo muestra en consola con colores
+     */
+    log(level, message, data = null) {
+        const formatted = this.formatMessage(level, message, data);
+        
+        // Guardar en memoria
+        this.logs.push({
+            timestamp: this.getTimestamp(),
+            level,
+            message,
+            data: data || null,
+            formatted
+        });
+        
+        // Limitar cantidad de logs
+        if (this.logs.length > this.maxLogs) {
+            this.logs.shift();
+        }
+        
+        // Mostrar en consola con colores según nivel
+        switch(level) {
+            case LOG_LEVELS.ERROR:
+                console.error(`%c${formatted}`, 'color: #ef4444; font-weight: bold;');
+                break;
+            case LOG_LEVELS.WARN:
+                console.warn(`%c${formatted}`, 'color: #fbbf24; font-weight: bold;');
+                break;
+            case LOG_LEVELS.SUCCESS:
+                console.log(`%c${formatted}`, 'color: #4ade80; font-weight: bold;');
+                break;
+            case LOG_LEVELS.INFO:
+                console.log(`%c${formatted}`, 'color: #38bdf8;');
+                break;
+            case LOG_LEVELS.DEBUG:
+                console.log(`%c${formatted}`, 'color: #94a3b8; font-style: italic;');
+                break;
+            default:
+                console.log(formatted);
+        }
+        
+        // También mostrar en la consola del sistema (si existe)
+        try {
+            if (typeof addLog !== 'undefined' &amp;&amp; addLog) {
+                addLog(formatted);
+            }
+        } catch (e) {
+            // Si addLog no está disponible, ignorar
+        }
+        
+        return formatted;
+    }
+
+    /**
+     * Log de información general
+     */
+    info(message, data = null) {
+        return this.log(LOG_LEVELS.INFO, message, data);
+    }
+
+    /**
+     * Log de advertencia
+     */
+    warn(message, data = null) {
+        return this.log(LOG_LEVELS.WARN, message, data);
+    }
+
+    /**
+     * Log de error
+     */
+    error(message, data = null) {
+        return this.log(LOG_LEVELS.ERROR, message, data);
+    }
+
+    /**
+     * Log de éxito
+     */
+    success(message, data = null) {
+        return this.log(LOG_LEVELS.SUCCESS, message, data);
+    }
+
+    /**
+     * Log de depuración
+     */
+    debug(message, data = null) {
+        return this.log(LOG_LEVELS.DEBUG, message, data);
+    }
+
+    /**
+     * Obtener todos los logs guardados
+     */
+    getLogs() {
+        return this.logs;
+    }
+
+    /**
+     * Obtener logs filtrados por nivel
+     */
+    getLogsByLevel(level) {
+        return this.logs.filter(log => log.level === level);
+    }
+
+    /**
+     * Limpiar logs
+     */
+    clearLogs() {
+        this.logs = [];
+        console.log('%c🧹 Logs limpiados', 'color: #94a3b8;');
+    }
+
+    /**
+     * Exportar logs a texto
+     */
+    exportLogs() {
+        return this.logs.map(log => log.formatted).join('\n');
+    }
+}
+
+// ============================================================
+// ===== INSTANCIAR EL LOGGER GLOBAL =====
+// ============================================================
+
+const logger = new Logger();
+
+// Exponer logger globalmente para usarlo en todo el código
+window.logger = logger;
+
+// Log de inicio del sistema
+logger.info('🚀 Sistema SITAC VEN inicializado');
+logger.info(`📅 Fecha: ${new Date().toLocaleString()}`);
+logger.info(`🌐 Navegador: ${navigator.userAgent}`);
+
+// ============================================================
+// ===== MANEJADOR GLOBAL DE ERRORES =====
+// ============================================================
+
+/**
+ * Captura errores no manejados en el código
+ */
+window.addEventListener('error', function(event) {
+    const error = event.error || event.message || 'Error desconocido';
+    const filename = event.filename || 'desconocido';
+    const lineno = event.lineno || '?';
+    const colno = event.colno || '?';
+    
+    logger.error(`🔥 Error no capturado en ${filename}:${lineno}:${colno}`, {
+        error: error.toString ? error.toString() : error,
+        filename,
+        lineno,
+        colno
+    });
+    
+    // Mostrar alerta amigable al usuario (solo si es admin)
+    if (isAdminUser &amp;&amp; typeof showTacticalAlert !== 'undefined') {
+        showTacticalAlert(
+            '⚠️ ERROR DEL SISTEMA',
+            `Se ha detectado un error interno.\n\n${error.toString ? error.toString().substring(0, 150) : error}\n\n🔍 Revisa la consola para más detalles.`,
+            '⚠️',
+            '#ef4444'
+        );
+    }
+    
+    // Evitar que el error rompa la página
+    event.preventDefault();
+    return true;
+});
+
+/**
+ * Captura promesas rechazadas no manejadas
+ */
+window.addEventListener('unhandledrejection', function(event) {
+    const reason = event.reason || 'Promesa rechazada sin razón';
+    
+    logger.error(`❌ Promesa rechazada no manejada: ${reason.toString ? reason.toString().substring(0, 200) : reason}`);
+    
+    // Evitar que el error rompa la página
+    event.preventDefault();
+    return true;
+});
+
+/**
+ * Función de utilidad para ejecutar código con try/catch automático
+ */
+function ejecutarConSeguridad(fn, nombreFuncion = 'función anónima', datos = null) {
+    try {
+        const resultado = fn();
+        logger.debug(`✅ ${nombreFuncion} ejecutada correctamente`, datos);
+        return resultado;
+    } catch (error) {
+        logger.error(`❌ Error en ${nombreFuncion}: ${error.message || error}`, {
+            error: error.message || error,
+            stack: error.stack,
+            datos
+        });
+        
+        // Devolver un valor por defecto según el tipo esperado
+        if (typeof resultadoEsperado === 'undefined') {
+            return null;
+        }
+        return null;
+    }
+}
+
+/**
+ * Función para validar datos de entrada
+ */
+function validarDato(dato, tipo, campo = 'dato') {
+    try {
+        switch(tipo) {
+            case 'string':
+                if (typeof dato !== 'string') {
+                    logger.warn(`⚠️ ${campo} debe ser string, recibido: ${typeof dato}`, { dato });
+                    return false;
+                }
+                return true;
+            case 'number':
+                if (typeof dato !== 'number' || isNaN(dato)) {
+                    logger.warn(`⚠️ ${campo} debe ser número, recibido: ${typeof dato}`, { dato });
+                    return false;
+                }
+                return true;
+            case 'object':
+                if (typeof dato !== 'object' || dato === null) {
+                    logger.warn(`⚠️ ${campo} debe ser objeto, recibido: ${typeof dato}`, { dato });
+                    return false;
+                }
+                return true;
+            case 'array':
+                if (!Array.isArray(dato)) {
+                    logger.warn(`⚠️ ${campo} debe ser array, recibido: ${typeof dato}`, { dato });
+                    return false;
+                }
+                return true;
+            case 'email':
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(dato)) {
+                    logger.warn(`⚠️ ${campo} debe ser email válido, recibido: ${dato}`);
+                    return false;
+                }
+                return true;
+            case 'cedula':
+                const cedulaStr = String(dato).replace(/\D/g, '');
+                if (cedulaStr.length &lt; 7 || cedulaStr.length > 8) {
+                    logger.warn(`⚠️ ${campo} debe tener 7-8 dígitos, recibido: ${dato}`);
+                    return false;
+                }
+                return true;
+            default:
+                return true;
+        }
+    } catch (error) {
+        logger.error(`❌ Error validando ${campo}: ${error.message}`, { dato, tipo });
+        return false;
+    }
+}
+
+// Log de inicio del logger
+logger.info('✅ Sistema de logs y trazabilidad inicializado');
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Detecta si una coordenada está en agua o en tierra
+ * @param {number} lat - Latitud de la coordenada
+ * @param {number} lng - Longitud de la coordenada
+ * @returns {boolean} true si está en agua, false si está en tierra
+ * @description Utiliza zonas predefinidas de Venezuela para determinar si el punto está en agua
+ */
+
 // ============================================================
 // ===== FUNCIÓN MEJORADA DE DETECCIÓN DE AGUA =====
 // ============================================================
 function estaEnAgua(lat, lng) {
-    if (lat < 0.5 || lat > 15.0 || lng < -73.5 || lng > -58.5) {
+    if (lat &lt; 0.5 || lat > 15.0 || lng &lt; -73.5 || lng > -58.5) {
         return false;
     }
     
@@ -52,8 +409,8 @@ function estaEnAgua(lat, lng) {
     ];
     
     for (let zona of zonasTierra) {
-        if (lat >= zona.minLat && lat <= zona.maxLat &&
-            lng >= zona.minLng && lng <= zona.maxLng) {
+        if (lat >= zona.minLat &amp;&amp; lat &lt;= zona.maxLat &amp;&amp;
+            lng >= zona.minLng &amp;&amp; lng &lt;= zona.maxLng) {
             return false;
         }
     }
@@ -72,37 +429,61 @@ function estaEnAgua(lat, lng) {
     ];
     
     for (let zona of zonasAgua) {
-        if (lat >= zona.minLat && lat <= zona.maxLat &&
-            lng >= zona.minLng && lng <= zona.maxLng) {
+        if (lat >= zona.minLat &amp;&amp; lat &lt;= zona.maxLat &amp;&amp;
+            lng >= zona.minLng &amp;&amp; lng &lt;= zona.maxLng) {
             return true;
         }
     }
     
-    if (lat > 11.0 && lat < 11.8 && lng > -70.8 && lng < -69.0) {
-        if (lat > 11.0 && lat < 11.4 && lng > -70.2 && lng < -69.4) return false;
+    if (lat > 11.0 &amp;&amp; lat &lt; 11.8 &amp;&amp; lng > -70.8 &amp;&amp; lng &lt; -69.0) {
+        if (lat > 11.0 &amp;&amp; lat &lt; 11.4 &amp;&amp; lng > -70.2 &amp;&amp; lng &lt; -69.4) return false;
         if (lat > 11.5) return true;
-        if (lng < -70.5 || lng > -69.0) return true;
-        if (lat > 11.45 && lng > -70.2 && lng < -69.8) return true;
+        if (lng &lt; -70.5 || lng > -69.0) return true;
+        if (lat > 11.45 &amp;&amp; lng > -70.2 &amp;&amp; lng &lt; -69.8) return true;
         return false;
     }
     
-    if (lat > 10.2 && lat < 10.8 && lng > -64.0 && lng < -63.5) {
-        if (lat > 10.4 && lat < 10.7 && lng > -64.0 && lng < -63.7) return false;
+    if (lat > 10.2 &amp;&amp; lat &lt; 10.8 &amp;&amp; lng > -64.0 &amp;&amp; lng &lt; -63.5) {
+        if (lat > 10.4 &amp;&amp; lat &lt; 10.7 &amp;&amp; lng > -64.0 &amp;&amp; lng &lt; -63.7) return false;
         return true;
     }
     
-    if (lat > 10.0 && lat < 10.5 && lng > -65.5 && lng < -64.8) return false;
-    if (lat > 10.4 && lat < 10.7 && lng > -66.2 && lng < -65.8) return false;
+    if (lat > 10.0 &amp;&amp; lat &lt; 10.5 &amp;&amp; lng > -65.5 &amp;&amp; lng &lt; -64.8) return false;
+    if (lat > 10.4 &amp;&amp; lat &lt; 10.7 &amp;&amp; lng > -66.2 &amp;&amp; lng &lt; -65.8) return false;
     
-    if (lat > 10.8 && lat < 12.5 && lng > -73.0 && lng < -66.0) {
-        if (lat > 11.0 && lat < 11.5 && lng > -70.2 && lng < -69.4) return false;
-        if (lat > 10.8 && lat < 11.2 && lng > -70.5 && lng < -69.6) return false;
+    if (lat > 10.8 &amp;&amp; lat &lt; 12.5 &amp;&amp; lng > -73.0 &amp;&amp; lng &lt; -66.0) {
+        if (lat > 11.0 &amp;&amp; lat &lt; 11.5 &amp;&amp; lng > -70.2 &amp;&amp; lng &lt; -69.4) return false;
+        if (lat > 10.8 &amp;&amp; lat &lt; 11.2 &amp;&amp; lng > -70.5 &amp;&amp; lng &lt; -69.6) return false;
         return true;
     }
     
     return false;
 }
 // ============================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Valida una cédula venezolana (7-8 dígitos numéricos)
+ * @param {HTMLInputElement} input - Elemento input que contiene la cédula
+ * @returns {boolean} true si la cédula es válida, false si no
+ * @example
+ * const input = document.getElementById('cedula');
+ * const esValida = validarCedula(input);
+ * if (esValida) { console.log('Cédula correcta'); }
+ */
 
 function validarCedula(input) {
     const valor = input.value;
@@ -116,11 +497,22 @@ function validarCedulaAdmin(input) {
     return validarCedulaGenerica(valor, helper);
 }
 
+
+
+
+/**
+ * Valida una cédula genérica con formato numérico
+ * @param {string} valor - Valor de la cédula a validar
+ * @param {HTMLElement} helper - Elemento HTML para mostrar mensajes de ayuda
+ * @returns {boolean} true si la cédula es válida, false si no
+ * @description Esta función verifica que la cédula tenga entre 7 y 8 dígitos
+ */
+
 function validarCedulaGenerica(valor, helper) {
     const soloNumeros = valor.replace(/\D/g, '');
     
     const input = helper ? helper.previousElementSibling : null;
-    if (input && input.tagName === 'INPUT') {
+    if (input &amp;&amp; input.tagName === 'INPUT') {
         input.value = soloNumeros;
     }
     
@@ -132,13 +524,13 @@ function validarCedulaGenerica(valor, helper) {
         return false;
     }
     
-    if (soloNumeros.length >= 7 && soloNumeros.length <= 8) {
+    if (soloNumeros.length >= 7 &amp;&amp; soloNumeros.length &lt;= 8) {
         if (helper) {
             helper.textContent = `✅ Cédula válida (${soloNumeros.length} dígitos)`;
             helper.className = 'cedula-helper success';
         }
         return true;
-    } else if (soloNumeros.length < 7) {
+    } else if (soloNumeros.length &lt; 7) {
         if (helper) {
             helper.textContent = `❌ Faltan dígitos (mínimo 7, actual: ${soloNumeros.length})`;
             helper.className = 'cedula-helper error';
@@ -153,13 +545,25 @@ function validarCedulaGenerica(valor, helper) {
     }
 }
 
+
+
+
+
+
+/**
+ * Valida una contraseña con requisitos de seguridad
+ * @param {HTMLInputElement} input - Elemento input que contiene la contraseña
+ * @returns {boolean} true si la contraseña es válida, false si no
+ * @description Requisitos: 8 caracteres, al menos 1 letra, 1 número y 1 signo
+ */
+
 function validarContrasena(input) {
     const valor = input.value;
     const helper = document.getElementById('contrasena-helper');
     
     if (valor.length === 0) {
         if (helper) {
-            helper.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
+            helper.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&amp;*)';
             helper.className = 'contrasena-helper';
         }
         input.className = '';
@@ -168,7 +572,7 @@ function validarContrasena(input) {
     
     const tieneLetra = /[a-zA-Z]/.test(valor);
     const tieneNumero = /[0-9]/.test(valor);
-    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(valor);
+    const tieneSigno = /[!@#$%^&amp;*()_+\-=\[\]{}|;:,.&lt;>?/]/.test(valor);
     const longitudCorrecta = valor.length === 8;
     const tieneEspacios = /\s/.test(valor);
     
@@ -193,7 +597,7 @@ function validarContrasena(input) {
         clase = 'contrasena-helper error';
         input.className = 'contrasena-invalid';
     } else if (!tieneSigno) {
-        mensaje = '❌ Debe contener al menos un signo (!@#$%^&*)';
+        mensaje = '❌ Debe contener al menos un signo (!@#$%^&amp;*)';
         clase = 'contrasena-helper error';
         input.className = 'contrasena-invalid';
     } else {
@@ -217,7 +621,7 @@ function validarContrasenaAdmin(input) {
     
     if (valor.length === 0) {
         if (helper) {
-            helper.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
+            helper.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&amp;*)';
             helper.className = 'contrasena-helper';
         }
         input.className = '';
@@ -226,7 +630,7 @@ function validarContrasenaAdmin(input) {
     
     const tieneLetra = /[a-zA-Z]/.test(valor);
     const tieneNumero = /[0-9]/.test(valor);
-    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(valor);
+    const tieneSigno = /[!@#$%^&amp;*()_+\-=\[\]{}|;:,.&lt;>?/]/.test(valor);
     const longitudCorrecta = valor.length === 8;
     const tieneEspacios = /\s/.test(valor);
     
@@ -251,7 +655,7 @@ function validarContrasenaAdmin(input) {
         clase = 'contrasena-helper error';
         input.className = 'contrasena-invalid';
     } else if (!tieneSigno) {
-        mensaje = '❌ Debe contener al menos un signo (!@#$%^&*)';
+        mensaje = '❌ Debe contener al menos un signo (!@#$%^&amp;*)';
         clase = 'contrasena-helper error';
         input.className = 'contrasena-invalid';
     } else {
@@ -276,21 +680,21 @@ function abrirModalRegistroMando() {
 
 function escapeHTML(str) {
     if (!str) return '';
-    return str.toString().replace(/[&<>"']/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    return str.toString().replace(/[&amp;&lt;>"']/g, function(m) {
+        return { '&amp;': '&amp;amp;', '&lt;': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#039;' }[m];
     });
 }
 
 function addLog(msg) {
     const b = document.getElementById('console-body');
     if (!b) return;
-    b.innerHTML += `<div>> ${new Date().toLocaleTimeString()} | ${escapeHTML(msg)}</div>`;
+    b.innerHTML += `&lt;div>> ${new Date().toLocaleTimeString()} | ${escapeHTML(msg)}&lt;/div>`;
     b.scrollTop = b.scrollHeight;
 }
 
 function truncarTexto(texto, maxLength = 25) {
     if (!texto) return 'N/A';
-    if (texto.length <= maxLength) return texto;
+    if (texto.length &lt;= maxLength) return texto;
     return texto.substring(0, maxLength) + '...';
 }
 
@@ -314,7 +718,7 @@ function showTacticalAlert(titulo, mensaje, icono = "⚠️", colorBorde = "#ef4
     }
     
     if (btnContainer) {
-        btnContainer.innerHTML = `<button class="btn-highlight" style="width: 140px; background:${colorBorde} !important; color:${colorBorde === '#fbbf24' ? '#000' : '#fff'} !important; margin: 0;" onclick="closeTacticalAlert()">ENTERADO</button>`;
+        btnContainer.innerHTML = `&lt;button class="btn-highlight" style="width: 140px; background:${colorBorde} !important; color:${colorBorde === '#fbbf24' ? '#000' : '#fff'} !important; margin: 0;" onclick="closeTacticalAlert()">ENTERADO&lt;/button>`;
     }
     
     const modal = document.getElementById('modal-alerta-tactica');
@@ -338,8 +742,8 @@ function showTacticalConfirm(titulo, mensaje, onConfirm, onCancel = null, icono 
     
     if (btnContainer) {
         btnContainer.innerHTML = `
-        <button class="btn-danger-outline" style="width: 110px; margin: 0; padding:8px;" id="btn-tactical-cancel">CANCELAR</button>
-        <button class="btn-highlight" style="width: 110px; margin: 0; padding:8px; background:#ef4444 !important; color:#fff !important;" id="btn-tactical-execute">EJECUTAR</button>
+        &lt;button class="btn-danger-outline" style="width: 110px; margin: 0; padding:8px;" id="btn-tactical-cancel">CANCELAR&lt;/button>
+        &lt;button class="btn-highlight" style="width: 110px; margin: 0; padding:8px; background:#ef4444 !important; color:#fff !important;" id="btn-tactical-execute">EJECUTAR&lt;/button>
         `;
     }
     
@@ -434,11 +838,11 @@ map.on('drag', function() {
 
 async function obtenerPaisDesdeCoordenadas(lat, lng) {
     try {
-        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=3&addressdetails=1`;
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&amp;lat=${lat}&amp;lon=${lng}&amp;zoom=3&amp;addressdetails=1`;
         const response = await fetch(url);
         const data = await response.json();
         
-        if (data && data.address && data.address.country) {
+        if (data &amp;&amp; data.address &amp;&amp; data.address.country) {
             return data.address.country;
         }
         return null;
@@ -488,17 +892,17 @@ L.control.layers(mapasBase, null, { position: 'topright' }).addTo(map);
 
 map.on('rotate', function() {
     let bearing = map.getBearing();
-    if (bearing < 0) bearing += 360;
+    if (bearing &lt; 0) bearing += 360;
     const needle = document.getElementById('compass-needle');
     if (needle) needle.style.transform = `rotate(${-bearing - 45}deg)`;
     let cardinal = "N";
-    if (bearing > 22.5 && bearing <= 67.5) cardinal = "NE";
-    else if (bearing > 67.5 && bearing <= 112.5) cardinal = "E";
-    else if (bearing > 112.5 && bearing <= 157.5) cardinal = "SE";
-    else if (bearing > 157.5 && bearing <= 202.5) cardinal = "S";
-    else if (bearing > 202.5 && bearing <= 247.5) cardinal = "SO";
-    else if (bearing > 247.5 && bearing <= 292.5) cardinal = "O";
-    else if (bearing > 292.5 && bearing <= 337.5) cardinal = "NO";
+    if (bearing > 22.5 &amp;&amp; bearing &lt;= 67.5) cardinal = "NE";
+    else if (bearing > 67.5 &amp;&amp; bearing &lt;= 112.5) cardinal = "E";
+    else if (bearing > 112.5 &amp;&amp; bearing &lt;= 157.5) cardinal = "SE";
+    else if (bearing > 157.5 &amp;&amp; bearing &lt;= 202.5) cardinal = "S";
+    else if (bearing > 202.5 &amp;&amp; bearing &lt;= 247.5) cardinal = "SO";
+    else if (bearing > 247.5 &amp;&amp; bearing &lt;= 292.5) cardinal = "O";
+    else if (bearing > 292.5 &amp;&amp; bearing &lt;= 337.5) cardinal = "NO";
     const label = document.getElementById('compass-bearing');
     if (label) label.innerText = `RUMBO: ${Math.round(bearing)}° ${cardinal}`;
 });
@@ -553,7 +957,7 @@ function buscarCoordenadas() {
             }
             
             const tempIcon = L.divIcon({
-                html: `<div style="background: #fbbf24; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 15px rgba(251,191,36,0.8);"></div>`,
+                html: `&lt;div style="background: #fbbf24; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 15px rgba(251,191,36,0.8);">&lt;/div>`,
                 className: 'temp-marker',
                 iconSize: [20, 20]
             });
@@ -561,12 +965,12 @@ function buscarCoordenadas() {
             tempSearchMarker = L.marker([coords.lat, coords.lng], { icon: tempIcon }).addTo(map);
             
             tempSearchMarker.bindPopup(`
-                <div style="font-family: 'JetBrains Mono'; text-align: center;">
-                    <b>📍 UBICACIÓN ENCONTRADA</b><br>
-                    Lat: ${coords.lat}<br>
-                    Lng: ${coords.lng}<br>
-                    <i style="color: #4ade80;">✅ Dentro de Venezuela</i>
-                </div>
+                &lt;div style="font-family: 'JetBrains Mono'; text-align: center;">
+                    &lt;b>📍 UBICACIÓN ENCONTRADA&lt;/b>&lt;br>
+                    Lat: ${coords.lat}&lt;br>
+                    Lng: ${coords.lng}&lt;br>
+                    &lt;i style="color: #4ade80;">✅ Dentro de Venezuela&lt;/i>
+                &lt;/div>
             `).openPopup();
             
             setTimeout(() => {
@@ -623,12 +1027,12 @@ const listaCompletaCuarteles = [
 // ============================================================
 function generarPopupCuartel(cuartel) {
     return `
-        <div style="
+        &lt;div style="
             font-family: 'Inter', sans-serif;
             min-width: 220px;
             padding: 4px;
         ">
-            <div style="
+            &lt;div style="
                 display: flex;
                 align-items: center;
                 gap: 10px;
@@ -636,7 +1040,7 @@ function generarPopupCuartel(cuartel) {
                 border-bottom: 1px solid #334155;
                 padding-bottom: 8px;
             ">
-                <div style="
+                &lt;div style="
                     width: 32px;
                     height: 32px;
                     border-radius: 8px;
@@ -648,8 +1052,8 @@ function generarPopupCuartel(cuartel) {
                     font-size: 16px;
                 ">
                     ${cuartel.icono}
-                </div>
-                <div style="
+                &lt;/div>
+                &lt;div style="
                     font-size: 13px;
                     font-weight: 700;
                     color: #fbbf24;
@@ -657,24 +1061,24 @@ function generarPopupCuartel(cuartel) {
                     font-family: 'Orbitron', sans-serif;
                 ">
                     ${cuartel.nombre}
-                </div>
-            </div>
+                &lt;/div>
+            &lt;/div>
             
-            <div style="display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 11px; color: #94a3b8;">
-                <span style="color: #64748b;">COMPONENTE</span>
-                <span style="color: #e2e8f0; font-weight: 500;">${cuartel.componente}</span>
+            &lt;div style="display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 11px; color: #94a3b8;">
+                &lt;span style="color: #64748b;">COMPONENTE&lt;/span>
+                &lt;span style="color: #e2e8f0; font-weight: 500;">${cuartel.componente}&lt;/span>
                 
-                <span style="color: #64748b;">COORDENADAS</span>
-                <span style="color: #94a3b8; font-size: 10px; font-family: 'JetBrains Mono', monospace;">${cuartel.lat}, ${cuartel.lng}</span>
-            </div>
-        </div>
+                &lt;span style="color: #64748b;">COORDENADAS&lt;/span>
+                &lt;span style="color: #94a3b8; font-size: 10px; font-family: 'JetBrains Mono', monospace;">${cuartel.lat}, ${cuartel.lng}&lt;/span>
+            &lt;/div>
+        &lt;/div>
     `;
 }
 
 function agregarCuarteles() {
     listaCompletaCuarteles.forEach(c => {
         const iconoCuartel = L.divIcon({
-            html: `<div style="
+            html: `&lt;div style="
                 background: rgba(30, 58, 138, 0.9);
                 border: 2px solid #fbbf24;
                 border-radius: 50%;
@@ -688,7 +1092,7 @@ function agregarCuarteles() {
                 transition: all 0.3s ease;
             ">
                 ${c.icono}
-            </div>`,
+            &lt;/div>`,
             className: 'cuartel-icon',
             iconSize: [32, 32]
         });
@@ -720,130 +1124,130 @@ function crearIconoProfesional(faction, asset, cantidad) {
     switch(asset) {
         case 'Tanques':
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="8" y="32" width="48" height="12" rx="2" fill="${color}" opacity="0.9"/>
-                    <rect x="4" y="36" width="56" height="6" rx="1" fill="${color}" opacity="0.7"/>
-                    <circle cx="16" cy="44" r="8" fill="#1e293b" stroke="${color}" stroke-width="2"/>
-                    <circle cx="16" cy="44" r="3" fill="${color}"/>
-                    <circle cx="48" cy="44" r="8" fill="#1e293b" stroke="${color}" stroke-width="2"/>
-                    <circle cx="48" cy="44" r="3" fill="${color}"/>
-                    <rect x="22" y="28" width="20" height="6" rx="1" fill="${color}" opacity="0.8"/>
-                    <rect x="26" y="22" width="12" height="8" rx="1" fill="${color}" opacity="0.9"/>
-                    <rect x="28" y="18" width="8" height="6" rx="1" fill="${color}" opacity="0.7"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;rect x="8" y="32" width="48" height="12" rx="2" fill="${color}" opacity="0.9"/>
+                    &lt;rect x="4" y="36" width="56" height="6" rx="1" fill="${color}" opacity="0.7"/>
+                    &lt;circle cx="16" cy="44" r="8" fill="#1e293b" stroke="${color}" stroke-width="2"/>
+                    &lt;circle cx="16" cy="44" r="3" fill="${color}"/>
+                    &lt;circle cx="48" cy="44" r="8" fill="#1e293b" stroke="${color}" stroke-width="2"/>
+                    &lt;circle cx="48" cy="44" r="3" fill="${color}"/>
+                    &lt;rect x="22" y="28" width="20" height="6" rx="1" fill="${color}" opacity="0.8"/>
+                    &lt;rect x="26" y="22" width="12" height="8" rx="1" fill="${color}" opacity="0.9"/>
+                    &lt;rect x="28" y="18" width="8" height="6" rx="1" fill="${color}" opacity="0.7"/>
+                &lt;/svg>
             `;
             label = 'TANQUE';
             break;
             
         case 'Barcos':
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 38 L16 30 L48 30 L56 38 L8 38Z" fill="${color}" opacity="0.9"/>
-                    <rect x="20" y="24" width="24" height="8" rx="2" fill="${color}" opacity="0.8"/>
-                    <rect x="14" y="36" width="36" height="4" rx="1" fill="${color}" opacity="0.6"/>
-                    <rect x="28" y="40" width="8" height="6" rx="1" fill="${color}" opacity="0.5"/>
-                    <path d="M10 38 L10 42 L54 42 L54 38" stroke="${color}" stroke-width="1.5" fill="none"/>
-                    <circle cx="18" cy="34" r="2" fill="#1e293b" stroke="${color}" stroke-width="1"/>
-                    <circle cx="46" cy="34" r="2" fill="#1e293b" stroke="${color}" stroke-width="1"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;path d="M8 38 L16 30 L48 30 L56 38 L8 38Z" fill="${color}" opacity="0.9"/>
+                    &lt;rect x="20" y="24" width="24" height="8" rx="2" fill="${color}" opacity="0.8"/>
+                    &lt;rect x="14" y="36" width="36" height="4" rx="1" fill="${color}" opacity="0.6"/>
+                    &lt;rect x="28" y="40" width="8" height="6" rx="1" fill="${color}" opacity="0.5"/>
+                    &lt;path d="M10 38 L10 42 L54 42 L54 38" stroke="${color}" stroke-width="1.5" fill="none"/>
+                    &lt;circle cx="18" cy="34" r="2" fill="#1e293b" stroke="${color}" stroke-width="1"/>
+                    &lt;circle cx="46" cy="34" r="2" fill="#1e293b" stroke="${color}" stroke-width="1"/>
+                &lt;/svg>
             `;
             label = 'BARCO';
             break;
             
         case 'Aviones':
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M32 8 L38 22 L54 18 L50 28 L38 32 L42 46 L32 40 L22 46 L26 32 L14 28 L10 18 L26 22 L32 8Z" fill="${color}" opacity="0.9"/>
-                    <path d="M20 26 L44 26 L48 22 L42 24 L32 20 L22 24 L16 22 L20 26Z" fill="${color}" opacity="0.6"/>
-                    <path d="M22 46 L26 38 L32 40 L38 38 L42 46" stroke="${color}" stroke-width="1.5" fill="none"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;path d="M32 8 L38 22 L54 18 L50 28 L38 32 L42 46 L32 40 L22 46 L26 32 L14 28 L10 18 L26 22 L32 8Z" fill="${color}" opacity="0.9"/>
+                    &lt;path d="M20 26 L44 26 L48 22 L42 24 L32 20 L22 24 L16 22 L20 26Z" fill="${color}" opacity="0.6"/>
+                    &lt;path d="M22 46 L26 38 L32 40 L38 38 L42 46" stroke="${color}" stroke-width="1.5" fill="none"/>
+                &lt;/svg>
             `;
             label = 'AVIÓN';
             break;
             
         case 'Drones':
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="32" cy="32" r="10" fill="#1e293b" stroke="${color}" stroke-width="2"/>
-                    <circle cx="32" cy="32" r="4" fill="${color}"/>
-                    <path d="M32 12 L36 22 L28 22 L32 12Z" fill="${color}" opacity="0.8"/>
-                    <path d="M32 52 L36 42 L28 42 L32 52Z" fill="${color}" opacity="0.8"/>
-                    <path d="M12 32 L22 28 L22 36 L12 32Z" fill="${color}" opacity="0.8"/>
-                    <path d="M52 32 L42 28 L42 36 L52 32Z" fill="${color}" opacity="0.8"/>
-                    <circle cx="32" cy="12" r="2" fill="${color}" opacity="0.5"/>
-                    <circle cx="32" cy="52" r="2" fill="${color}" opacity="0.5"/>
-                    <circle cx="12" cy="32" r="2" fill="${color}" opacity="0.5"/>
-                    <circle cx="52" cy="32" r="2" fill="${color}" opacity="0.5"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;circle cx="32" cy="32" r="10" fill="#1e293b" stroke="${color}" stroke-width="2"/>
+                    &lt;circle cx="32" cy="32" r="4" fill="${color}"/>
+                    &lt;path d="M32 12 L36 22 L28 22 L32 12Z" fill="${color}" opacity="0.8"/>
+                    &lt;path d="M32 52 L36 42 L28 42 L32 52Z" fill="${color}" opacity="0.8"/>
+                    &lt;path d="M12 32 L22 28 L22 36 L12 32Z" fill="${color}" opacity="0.8"/>
+                    &lt;path d="M52 32 L42 28 L42 36 L52 32Z" fill="${color}" opacity="0.8"/>
+                    &lt;circle cx="32" cy="12" r="2" fill="${color}" opacity="0.5"/>
+                    &lt;circle cx="32" cy="52" r="2" fill="${color}" opacity="0.5"/>
+                    &lt;circle cx="12" cy="32" r="2" fill="${color}" opacity="0.5"/>
+                    &lt;circle cx="52" cy="32" r="2" fill="${color}" opacity="0.5"/>
+                &lt;/svg>
             `;
             label = 'DRON';
             break;
             
         case 'Tropas':
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="32" cy="16" r="10" fill="#1e293b" stroke="${color}" stroke-width="2"/>
-                    <circle cx="32" cy="16" r="4" fill="${color}"/>
-                    <path d="M20 30 L44 30 L48 38 L40 36 L38 44 L26 44 L24 36 L16 38 L20 30Z" fill="${color}" opacity="0.9"/>
-                    <rect x="24" y="44" width="16" height="8" rx="2" fill="${color}" opacity="0.7"/>
-                    <line x1="20" y1="52" x2="16" y2="60" stroke="${color}" stroke-width="2"/>
-                    <line x1="44" y1="52" x2="48" y2="60" stroke="${color}" stroke-width="2"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;circle cx="32" cy="16" r="10" fill="#1e293b" stroke="${color}" stroke-width="2"/>
+                    &lt;circle cx="32" cy="16" r="4" fill="${color}"/>
+                    &lt;path d="M20 30 L44 30 L48 38 L40 36 L38 44 L26 44 L24 36 L16 38 L20 30Z" fill="${color}" opacity="0.9"/>
+                    &lt;rect x="24" y="44" width="16" height="8" rx="2" fill="${color}" opacity="0.7"/>
+                    &lt;line x1="20" y1="52" x2="16" y2="60" stroke="${color}" stroke-width="2"/>
+                    &lt;line x1="44" y1="52" x2="48" y2="60" stroke="${color}" stroke-width="2"/>
+                &lt;/svg>
             `;
             label = 'TROPAS';
             break;
             
         case 'Terrorista':
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="32" cy="20" r="12" fill="#1e293b" stroke="${color}" stroke-width="2"/>
-                    <circle cx="32" cy="20" r="4" fill="${color}"/>
-                    <path d="M20 34 L44 34 L48 42 L40 40 L38 48 L26 48 L24 40 L16 42 L20 34Z" fill="${color}" opacity="0.9"/>
-                    <rect x="22" y="48" width="20" height="10" rx="2" fill="${color}" opacity="0.7"/>
-                    <path d="M10 48 L16 44 L20 48" stroke="${color}" stroke-width="2" fill="none"/>
-                    <path d="M54 48 L48 44 L44 48" stroke="${color}" stroke-width="2" fill="none"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;circle cx="32" cy="20" r="12" fill="#1e293b" stroke="${color}" stroke-width="2"/>
+                    &lt;circle cx="32" cy="20" r="4" fill="${color}"/>
+                    &lt;path d="M20 34 L44 34 L48 42 L40 40 L38 48 L26 48 L24 40 L16 42 L20 34Z" fill="${color}" opacity="0.9"/>
+                    &lt;rect x="22" y="48" width="20" height="10" rx="2" fill="${color}" opacity="0.7"/>
+                    &lt;path d="M10 48 L16 44 L20 48" stroke="${color}" stroke-width="2" fill="none"/>
+                    &lt;path d="M54 48 L48 44 L44 48" stroke="${color}" stroke-width="2" fill="none"/>
+                &lt;/svg>
             `;
             label = 'HOSTIL';
             break;
             
         case 'Enfrentamiento':
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="32" cy="32" r="20" fill="#1e293b" stroke="${color}" stroke-width="2"/>
-                    <circle cx="32" cy="32" r="8" fill="${color}"/>
-                    <path d="M8 32 L18 28 L14 20 L24 24 L28 14 L32 22 L36 14 L40 24 L50 20 L46 28 L56 32 L46 36 L50 44 L40 40 L36 50 L32 42 L28 50 L24 40 L14 44 L18 36 L8 32Z" fill="${color}" opacity="0.6"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;circle cx="32" cy="32" r="20" fill="#1e293b" stroke="${color}" stroke-width="2"/>
+                    &lt;circle cx="32" cy="32" r="8" fill="${color}"/>
+                    &lt;path d="M8 32 L18 28 L14 20 L24 24 L28 14 L32 22 L36 14 L40 24 L50 20 L46 28 L56 32 L46 36 L50 44 L40 40 L36 50 L32 42 L28 50 L24 40 L14 44 L18 36 L8 32Z" fill="${color}" opacity="0.6"/>
+                &lt;/svg>
             `;
             label = 'CONFLICTO';
             break;
             
         case 'Unidad Médica':
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="32" cy="32" r="22" fill="#1e293b" stroke="${color}" stroke-width="2"/>
-                    <circle cx="32" cy="32" r="14" fill="${color}" opacity="0.2"/>
-                    <rect x="20" y="26" width="24" height="12" rx="1" fill="${color}" opacity="0.9"/>
-                    <rect x="26" y="20" width="12" height="24" rx="1" fill="${color}" opacity="0.9"/>
-                    <path d="M8 32 L14 32" stroke="${color}" stroke-width="2"/>
-                    <path d="M50 32 L56 32" stroke="${color}" stroke-width="2"/>
-                    <path d="M32 8 L32 14" stroke="${color}" stroke-width="2"/>
-                    <path d="M32 50 L32 56" stroke="${color}" stroke-width="2"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;circle cx="32" cy="32" r="22" fill="#1e293b" stroke="${color}" stroke-width="2"/>
+                    &lt;circle cx="32" cy="32" r="14" fill="${color}" opacity="0.2"/>
+                    &lt;rect x="20" y="26" width="24" height="12" rx="1" fill="${color}" opacity="0.9"/>
+                    &lt;rect x="26" y="20" width="12" height="24" rx="1" fill="${color}" opacity="0.9"/>
+                    &lt;path d="M8 32 L14 32" stroke="${color}" stroke-width="2"/>
+                    &lt;path d="M50 32 L56 32" stroke="${color}" stroke-width="2"/>
+                    &lt;path d="M32 8 L32 14" stroke="${color}" stroke-width="2"/>
+                    &lt;path d="M32 50 L32 56" stroke="${color}" stroke-width="2"/>
+                &lt;/svg>
             `;
             label = 'MÉDICO';
             break;
             
         default:
             svgIcon = `
-                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="32" cy="32" r="22" fill="#1e293b" stroke="${color}" stroke-width="2"/>
-                    <circle cx="32" cy="32" r="8" fill="${color}"/>
-                    <circle cx="32" cy="16" r="4" fill="${color}" opacity="0.5"/>
-                    <circle cx="48" cy="32" r="4" fill="${color}" opacity="0.5"/>
-                    <circle cx="32" cy="48" r="4" fill="${color}" opacity="0.5"/>
-                    <circle cx="16" cy="32" r="4" fill="${color}" opacity="0.5"/>
-                </svg>
+                &lt;svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    &lt;circle cx="32" cy="32" r="22" fill="#1e293b" stroke="${color}" stroke-width="2"/>
+                    &lt;circle cx="32" cy="32" r="8" fill="${color}"/>
+                    &lt;circle cx="32" cy="16" r="4" fill="${color}" opacity="0.5"/>
+                    &lt;circle cx="48" cy="32" r="4" fill="${color}" opacity="0.5"/>
+                    &lt;circle cx="32" cy="48" r="4" fill="${color}" opacity="0.5"/>
+                    &lt;circle cx="16" cy="32" r="4" fill="${color}" opacity="0.5"/>
+                &lt;/svg>
             `;
             label = asset;
     }
@@ -978,7 +1382,7 @@ function handleRegistro() {
 
     const tieneLetra = /[a-zA-Z]/.test(v_pass);
     const tieneNumero = /[0-9]/.test(v_pass);
-    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(v_pass);
+    const tieneSigno = /[!@#$%^&amp;*()_+\-=\[\]{}|;:,.&lt;>?/]/.test(v_pass);
     const longitudCorrecta = v_pass.length === 8;
     const tieneEspacios = /\s/.test(v_pass);
     
@@ -1003,7 +1407,7 @@ function handleRegistro() {
     }
     
     if (!tieneSigno) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un signo (!@#$%^&*).", "⚠️", "#fbbf24");
+        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un signo (!@#$%^&amp;*).", "⚠️", "#fbbf24");
         return;
     }
 
@@ -1071,7 +1475,7 @@ function handleRegistro() {
             
             const helperPass = document.getElementById('contrasena-helper');
             if (helperPass) {
-                helperPass.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
+                helperPass.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&amp;*)';
                 helperPass.className = 'contrasena-helper';
             }
         })
@@ -1123,28 +1527,28 @@ function enviarCodigoRecuperacion() {
     const infoDiv = document.getElementById('recuperar-info');
     
     if (!correo) {
-        infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Ingresa tu correo electrónico registrado.</span>';
+        infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ Ingresa tu correo electrónico registrado.&lt;/span>';
         return;
     }
     
     const nodo = recuperacionData.tipo === 'admin' ? 'administradores' : 'usuarios_aprobados';
     
-    infoDiv.innerHTML = '<span style="color: #38bdf8;">🔍 Verificando correo en el sistema...</span>';
+    infoDiv.innerHTML = '&lt;span style="color: #38bdf8;">🔍 Verificando correo en el sistema...&lt;/span>';
     
     db.ref(nodo).orderByChild('correo').equalTo(correo).once('value')
         .then(snapshot => {
             const datos = snapshot.val();
             
             if (!datos) {
-                infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Correo no registrado en el sistema. Verifica e intenta nuevamente.</span>';
+                infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ Correo no registrado en el sistema. Verifica e intenta nuevamente.&lt;/span>';
                 return;
             }
             
             const cedula = Object.keys(datos)[0];
             const usuario = datos[cedula];
             
-            if (intentosFallidos[cedula] && intentosFallidos[cedula] >= 10) {
-                infoDiv.innerHTML = `<span style="color: #ef4444;">🔒 ACCESO BLOQUEADO: Has superado los 10 intentos fallidos. Contacta al administrador.</span>`;
+            if (intentosFallidos[cedula] &amp;&amp; intentosFallidos[cedula] >= 10) {
+                infoDiv.innerHTML = `&lt;span style="color: #ef4444;">🔒 ACCESO BLOQUEADO: Has superado los 10 intentos fallidos. Contacta al administrador.&lt;/span>`;
                 return;
             }
             
@@ -1162,7 +1566,7 @@ function enviarCodigoRecuperacion() {
                     codigo: codigo
                 })
                 .then(() => {
-                    infoDiv.innerHTML = `<span style="color: #4ade80;">✅ Código de 6 dígitos enviado a ${correo}. Revisa tu bandeja de entrada.</span>`;
+                    infoDiv.innerHTML = `&lt;span style="color: #4ade80;">✅ Código de 6 dígitos enviado a ${correo}. Revisa tu bandeja de entrada.&lt;/span>`;
                     
                     document.getElementById('validar-codigo-section').style.display = 'block';
                     document.getElementById('codigo-validacion').value = '';
@@ -1171,7 +1575,7 @@ function enviarCodigoRecuperacion() {
                     setTimeout(() => {
                         if (recuperacionData.codigo === codigo) {
                             recuperacionData.codigo = '';
-                            infoDiv.innerHTML = '<span style="color: #fbbf24;">⏰ El código ha expirado. Solicita uno nuevo.</span>';
+                            infoDiv.innerHTML = '&lt;span style="color: #fbbf24;">⏰ El código ha expirado. Solicita uno nuevo.&lt;/span>';
                             document.getElementById('validar-codigo-section').style.display = 'none';
                         }
                     }, 300000);
@@ -1180,11 +1584,11 @@ function enviarCodigoRecuperacion() {
                 })
                 .catch(err => {
                     console.error('Error enviando correo:', err);
-                    infoDiv.innerHTML = `<span style="color: #ef4444;">❌ Error al enviar el correo. Intenta nuevamente.</span>`;
+                    infoDiv.innerHTML = `&lt;span style="color: #ef4444;">❌ Error al enviar el correo. Intenta nuevamente.&lt;/span>`;
                 });
             } else {
                 console.log('📧 Código de recuperación:', codigo);
-                infoDiv.innerHTML = `<span style="color: #fbbf24;">⚠️ Código generado: ${codigo} (modo desarrollo)</span>`;
+                infoDiv.innerHTML = `&lt;span style="color: #fbbf24;">⚠️ Código generado: ${codigo} (modo desarrollo)&lt;/span>`;
                 document.getElementById('validar-codigo-section').style.display = 'block';
                 document.getElementById('codigo-validacion').value = '';
                 document.getElementById('validacion-info').innerHTML = '';
@@ -1192,7 +1596,7 @@ function enviarCodigoRecuperacion() {
         })
         .catch(err => {
             console.error('Error verificando correo:', err);
-            infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Error al verificar el correo. Intenta nuevamente.</span>';
+            infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ Error al verificar el correo. Intenta nuevamente.&lt;/span>';
         });
 }
 
@@ -1201,12 +1605,12 @@ function validarCodigoRecuperacion() {
     const infoDiv = document.getElementById('validacion-info');
     
     if (!codigoIngresado || codigoIngresado.length !== 6) {
-        infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Ingresa el código de 6 dígitos recibido en tu correo.</span>';
+        infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ Ingresa el código de 6 dígitos recibido en tu correo.&lt;/span>';
         return;
     }
     
     if (!recuperacionData.codigo) {
-        infoDiv.innerHTML = '<span style="color: #ef4444;">❌ El código ha expirado. Solicita uno nuevo.</span>';
+        infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ El código ha expirado. Solicita uno nuevo.&lt;/span>';
         document.getElementById('validar-codigo-section').style.display = 'none';
         return;
     }
@@ -1214,13 +1618,13 @@ function validarCodigoRecuperacion() {
     if (codigoIngresado === recuperacionData.codigo) {
         const tiempoTranscurrido = Date.now() - recuperacionData.timestamp;
         if (tiempoTranscurrido > 300000) {
-            infoDiv.innerHTML = '<span style="color: #ef4444;">⏰ El código ha expirado (máximo 5 minutos). Solicita uno nuevo.</span>';
+            infoDiv.innerHTML = '&lt;span style="color: #ef4444;">⏰ El código ha expirado (máximo 5 minutos). Solicita uno nuevo.&lt;/span>';
             recuperacionData.codigo = '';
             document.getElementById('validar-codigo-section').style.display = 'none';
             return;
         }
         
-        infoDiv.innerHTML = '<span style="color: #4ade80;">✅ Código validado correctamente.</span>';
+        infoDiv.innerHTML = '&lt;span style="color: #4ade80;">✅ Código validado correctamente.&lt;/span>';
         
         setTimeout(() => {
             closeModals();
@@ -1231,13 +1635,13 @@ function validarCodigoRecuperacion() {
     } else {
         recuperacionData.intentos++;
         const restantes = 3 - recuperacionData.intentos;
-        if (restantes <= 0) {
-            infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Has agotado los intentos. Solicita un nuevo código.</span>';
+        if (restantes &lt;= 0) {
+            infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ Has agotado los intentos. Solicita un nuevo código.&lt;/span>';
             recuperacionData.codigo = '';
             document.getElementById('validar-codigo-section').style.display = 'none';
-            document.getElementById('recuperar-info').innerHTML = '<span style="color: #fbbf24;">🔄 Solicita un nuevo código para intentar nuevamente.</span>';
+            document.getElementById('recuperar-info').innerHTML = '&lt;span style="color: #fbbf24;">🔄 Solicita un nuevo código para intentar nuevamente.&lt;/span>';
         } else {
-            infoDiv.innerHTML = `<span style="color: #ef4444;">❌ Código incorrecto. Te quedan ${restantes} intento(s).</span>`;
+            infoDiv.innerHTML = `&lt;span style="color: #ef4444;">❌ Código incorrecto. Te quedan ${restantes} intento(s).&lt;/span>`;
         }
     }
 }
@@ -1247,7 +1651,7 @@ function abrirModalCambiarContraseña() {
     document.getElementById('cambiar-pass-nueva').value = '';
     document.getElementById('cambiar-pass-repetir').value = '';
     document.getElementById('cambiar-pass-info').innerHTML = '';
-    document.getElementById('contrasena-helper-recuperacion').textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
+    document.getElementById('contrasena-helper-recuperacion').textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&amp;*)';
     document.getElementById('contrasena-helper-recuperacion').className = 'contrasena-helper';
     document.getElementById('repetir-helper').textContent = '';
     document.getElementById('repetir-helper').className = 'contrasena-helper';
@@ -1260,7 +1664,7 @@ function validarContrasenaRecuperacion(input) {
     const helper = document.getElementById('contrasena-helper-recuperacion');
     
     if (valor.length === 0) {
-        helper.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
+        helper.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&amp;*)';
         helper.className = 'contrasena-helper';
         input.className = '';
         return false;
@@ -1268,7 +1672,7 @@ function validarContrasenaRecuperacion(input) {
     
     const tieneLetra = /[a-zA-Z]/.test(valor);
     const tieneNumero = /[0-9]/.test(valor);
-    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(valor);
+    const tieneSigno = /[!@#$%^&amp;*()_+\-=\[\]{}|;:,.&lt;>?/]/.test(valor);
     const longitudCorrecta = valor.length === 8;
     const tieneEspacios = /\s/.test(valor);
     
@@ -1293,7 +1697,7 @@ function validarContrasenaRecuperacion(input) {
         clase = 'contrasena-helper error';
         input.className = 'contrasena-invalid';
     } else if (!tieneSigno) {
-        mensaje = '❌ Debe contener al menos un signo (!@#$%^&*)';
+        mensaje = '❌ Debe contener al menos un signo (!@#$%^&amp;*)';
         clase = 'contrasena-helper error';
         input.className = 'contrasena-invalid';
     } else {
@@ -1340,34 +1744,34 @@ function cambiarContraseña() {
     const infoDiv = document.getElementById('cambiar-pass-info');
     
     if (!cedula) {
-        infoDiv.innerHTML = '<span style="color: #ef4444;">❌ No se encontró la cédula. Reinicia el proceso.</span>';
+        infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ No se encontró la cédula. Reinicia el proceso.&lt;/span>';
         return;
     }
     
     if (!nuevaPass || !repetirPass) {
-        infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Completa todos los campos.</span>';
+        infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ Completa todos los campos.&lt;/span>';
         return;
     }
     
     const tieneLetra = /[a-zA-Z]/.test(nuevaPass);
     const tieneNumero = /[0-9]/.test(nuevaPass);
-    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(nuevaPass);
+    const tieneSigno = /[!@#$%^&amp;*()_+\-=\[\]{}|;:,.&lt;>?/]/.test(nuevaPass);
     const longitudCorrecta = nuevaPass.length === 8;
     const tieneEspacios = /\s/.test(nuevaPass);
     
     if (tieneEspacios || !longitudCorrecta || !tieneLetra || !tieneNumero || !tieneSigno) {
-        infoDiv.innerHTML = '<span style="color: #ef4444;">❌ La contraseña no cumple con los requisitos de seguridad.</span>';
+        infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ La contraseña no cumple con los requisitos de seguridad.&lt;/span>';
         return;
     }
     
     if (nuevaPass !== repetirPass) {
-        infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Las contraseñas no coinciden.</span>';
+        infoDiv.innerHTML = '&lt;span style="color: #ef4444;">❌ Las contraseñas no coinciden.&lt;/span>';
         return;
     }
     
     const nodo = recuperacionData.tipo === 'admin' ? 'administradores' : 'usuarios_aprobados';
     
-    infoDiv.innerHTML = '<span style="color: #38bdf8;">🔄 Actualizando contraseña en el sistema...</span>';
+    infoDiv.innerHTML = '&lt;span style="color: #38bdf8;">🔄 Actualizando contraseña en el sistema...&lt;/span>';
     
     db.ref(`${nodo}/${cedula}/pass`).set(nuevaPass)
         .then(() => {
@@ -1375,9 +1779,9 @@ function cambiarContraseña() {
             recuperacionData.codigo = '';
             recuperacionData.correo = '';
             
-            infoDiv.innerHTML = '<span style="color: #4ade80;">✅ ¡Contraseña actualizada exitosamente!</span>';
+            infoDiv.innerHTML = '&lt;span style="color: #4ade80;">✅ ¡Contraseña actualizada exitosamente!&lt;/span>';
             
-            if (typeof emailjs !== 'undefined' && recuperacionData.usuario) {
+            if (typeof emailjs !== 'undefined' &amp;&amp; recuperacionData.usuario) {
                 emailjs.send("service_wm4ye18", "template_1600d5d", {
                     to_email: recuperacionData.correo,
                     nombre: `${recuperacionData.usuario.grado || ''} ${recuperacionData.usuario.nombre || ''} ${recuperacionData.usuario.apellido || ''}`,
@@ -1407,7 +1811,7 @@ function cambiarContraseña() {
         })
         .catch(err => {
             console.error('Error actualizando contraseña:', err);
-            infoDiv.innerHTML = `<span style="color: #ef4444;">❌ Error al actualizar la contraseña. Intenta nuevamente.</span>`;
+            infoDiv.innerHTML = `&lt;span style="color: #ef4444;">❌ Error al actualizar la contraseña. Intenta nuevamente.&lt;/span>`;
         });
 }
 
@@ -1417,13 +1821,13 @@ function handleLogin() {
     
     closeModals();
     
-    if (cedula === "0000" && pass === "admin123") { 
+    if (cedula === "0000" &amp;&amp; pass === "admin123") { 
         guardarSesion("ADMINISTRADOR SUPREMO", "admin");
         iniciarApp("ADMINISTRADOR SUPREMO", "admin"); 
         return; 
     }
     
-    if (intentosFallidos[cedula] && intentosFallidos[cedula] >= 10) {
+    if (intentosFallidos[cedula] &amp;&amp; intentosFallidos[cedula] >= 10) {
         showTacticalAlert(
             "🔒 ACCESO BLOQUEADO",
             `Has superado los 10 intentos fallidos.\n\nUtiliza la opción "Recuperar acceso" para restablecer tu contraseña.`,
@@ -1435,7 +1839,7 @@ function handleLogin() {
     
     db.ref('usuarios_aprobados/' + cedula).once('value').then((snap) => {
         const user = snap.val();
-        if (user && user.pass === pass) {
+        if (user &amp;&amp; user.pass === pass) {
             delete intentosFallidos[cedula];
             guardarSesion(user.grado + " " + user.nombre, "usuario");
             iniciarApp(user.grado + " " + user.nombre, "usuario");
@@ -1579,13 +1983,13 @@ function handleAdminLogin() {
     
     closeModals();
     
-    if (cedula === "0000" && pass === "admin123") { 
+    if (cedula === "0000" &amp;&amp; pass === "admin123") { 
         guardarSesion("ADMINISTRADOR SUPREMO", "admin");
         iniciarApp("ADMINISTRADOR SUPREMO", "admin"); 
         return; 
     }
     
-    if (intentosFallidos[cedula] && intentosFallidos[cedula] >= 10) {
+    if (intentosFallidos[cedula] &amp;&amp; intentosFallidos[cedula] >= 10) {
         showTacticalAlert(
             "🔒 ACCESO DE MANDO BLOQUEADO",
             `Has superado los 10 intentos fallidos.\n\nUtiliza la opción "Recuperar acceso" para restablecer tu contraseña.`,
@@ -1597,7 +2001,7 @@ function handleAdminLogin() {
     
     db.ref('administradores/' + cedula).once('value').then((snap) => {
         const admin = snap.val();
-        if (admin && admin.pass === pass) {
+        if (admin &amp;&amp; admin.pass === pass) {
             delete intentosFallidos[cedula];
             guardarSesion(admin.grado + " " + admin.nombre, "admin");
             iniciarApp(admin.grado + " " + admin.nombre, "admin");
@@ -1661,7 +2065,7 @@ function handleAdminRegistro() {
 
     const tieneLetra = /[a-zA-Z]/.test(pass);
     const tieneNumero = /[0-9]/.test(pass);
-    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(pass);
+    const tieneSigno = /[!@#$%^&amp;*()_+\-=\[\]{}|;:,.&lt;>?/]/.test(pass);
     const longitudCorrecta = pass.length === 8;
     const tieneEspacios = /\s/.test(pass);
     
@@ -1686,7 +2090,7 @@ function handleAdminRegistro() {
     }
     
     if (!tieneSigno) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un signo (!@#$%^&*).", "⚠️", "#fbbf24");
+        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un signo (!@#$%^&amp;*).", "⚠️", "#fbbf24");
         return;
     }
 
@@ -1758,7 +2162,7 @@ function escucharBuzonReportes() {
         const badge = document.getElementById('msg-count');
         const lista = snapshot.val();
         if (!lista) {
-            if (buzon) buzon.innerHTML = `<div style="color:#6b7280; font-size:0.75rem; text-align:center; padding:20px;">Sin reportes nuevos</div>`;
+            if (buzon) buzon.innerHTML = `&lt;div style="color:#6b7280; font-size:0.75rem; text-align:center; padding:20px;">Sin reportes nuevos&lt;/div>`;
             if (badge) badge.style.display = "none";
             return;
         }
@@ -1770,10 +2174,10 @@ function escucharBuzonReportes() {
             let card = document.createElement('div');
             card.className = "msg-card";
             card.innerHTML = `
-            <div class="msg-meta">👤 De: ${escapeHTML(r.emisor)} | 📅 ${escapeHTML(r.fecha)}</div>
-            <div style="font-weight:bold; color:#fbbf24; margin-bottom:5px;">📌 ASUNTO: ${escapeHTML(r.asunto)}</div>
-            <div style="color:#f3f4f6; margin-bottom:8px; background:#111827; padding:10px; border:1px solid #374151;">${escapeHTML(r.mensaje)}</div>
-            <button onclick="confirmarEliminar('${key}')" style="background:#ef4444; color:white; border:none; font-size:11px; padding:4px 8px; cursor:pointer;">Eliminar</button>
+            &lt;div class="msg-meta">👤 De: ${escapeHTML(r.emisor)} | 📅 ${escapeHTML(r.fecha)}&lt;/div>
+            &lt;div style="font-weight:bold; color:#fbbf24; margin-bottom:5px;">📌 ASUNTO: ${escapeHTML(r.asunto)}&lt;/div>
+            &lt;div style="color:#f3f4f6; margin-bottom:8px; background:#111827; padding:10px; border:1px solid #374151;">${escapeHTML(r.mensaje)}&lt;/div>
+            &lt;button onclick="confirmarEliminar('${key}')" style="background:#ef4444; color:white; border:none; font-size:11px; padding:4px 8px; cursor:pointer;">Eliminar&lt;/button>
             `;
             if (buzon) buzon.prepend(card);
         }
@@ -1806,11 +2210,11 @@ function cargarSolicitudesEnModal() {
         
         if (!lista) {
             contenedor.innerHTML = `
-                <div style="color:#6b7280; font-size:0.85rem; text-align:center; padding:40px;">
-                    <div style="font-size: 40px; margin-bottom: 15px;">📭</div>
-                    <p style="font-weight: bold; color: #fbbf24;">No hay solicitudes pendientes</p>
-                    <p style="font-size: 0.75rem; color: #64748b;">Todos los usuarios han sido procesados.</p>
-                </div>
+                &lt;div style="color:#6b7280; font-size:0.85rem; text-align:center; padding:40px;">
+                    &lt;div style="font-size: 40px; margin-bottom: 15px;">📭&lt;/div>
+                    &lt;p style="font-weight: bold; color: #fbbf24;">No hay solicitudes pendientes&lt;/p>
+                    &lt;p style="font-size: 0.75rem; color: #64748b;">Todos los usuarios han sido procesados.&lt;/p>
+                &lt;/div>
             `;
             if (contador) contador.textContent = 'Total: 0 solicitudes';
             return;
@@ -1854,46 +2258,46 @@ function cargarSolicitudesEnModal() {
             
             let colorJerarquia = '#94a3b8';
             const gradosSuperiores = ['General', 'Almirante', 'Coronel', 'Capitán', 'Mayor', 'Teniente'];
-            if (gradosSuperiores.some(g => u.grado && u.grado.includes(g))) {
+            if (gradosSuperiores.some(g => u.grado &amp;&amp; u.grado.includes(g))) {
                 colorJerarquia = '#fbbf24';
             }
             
             card.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
-                            <span style="font-weight: bold; color: ${colorJerarquia}; font-size: 0.85rem;">
+                &lt;div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                    &lt;div style="flex: 1; min-width: 200px;">
+                        &lt;div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
+                            &lt;span style="font-weight: bold; color: ${colorJerarquia}; font-size: 0.85rem;">
                                 ${u.grado || 'Sin grado'}
-                            </span>
-                            <span style="color: #e2e8f0; font-size: 0.85rem; font-weight: bold;">
+                            &lt;/span>
+                            &lt;span style="color: #e2e8f0; font-size: 0.85rem; font-weight: bold;">
                                 ${nombreCompleto}
-                            </span>
-                            <span style="background: #b45309; color: #fff; padding: 2px 10px; font-size: 0.6rem; border-radius: 10px; font-weight: bold;">
+                            &lt;/span>
+                            &lt;span style="background: #b45309; color: #fff; padding: 2px 10px; font-size: 0.6rem; border-radius: 10px; font-weight: bold;">
                                 PENDIENTE
-                            </span>
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.7rem; color: #94a3b8;">
-                            <span>🆔 <span style="color: #e2e8f0;">${id}</span></span>
-                            <span>📧 <span style="color: #e2e8f0;">${u.correo || 'N/A'}</span></span>
-                            <span>🏛️ <span style="color: #e2e8f0;">${u.componente || 'N/A'}</span></span>
-                            <span>📅 <span style="color: #e2e8f0;">${fechaSolicitud}</span></span>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button onclick="aprobarUsuarioPendiente('${id}')" 
+                            &lt;/span>
+                        &lt;/div>
+                        &lt;div style="display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.7rem; color: #94a3b8;">
+                            &lt;span>🆔 &lt;span style="color: #e2e8f0;">${id}&lt;/span>&lt;/span>
+                            &lt;span>📧 &lt;span style="color: #e2e8f0;">${u.correo || 'N/A'}&lt;/span>&lt;/span>
+                            &lt;span>🏛️ &lt;span style="color: #e2e8f0;">${u.componente || 'N/A'}&lt;/span>&lt;/span>
+                            &lt;span>📅 &lt;span style="color: #e2e8f0;">${fechaSolicitud}&lt;/span>&lt;/span>
+                        &lt;/div>
+                    &lt;/div>
+                    &lt;div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        &lt;button onclick="aprobarUsuarioPendiente('${id}')" 
                                 style="background: #15803d; color: white; border: none; padding: 7px 18px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: bold; transition: 0.2s;"
                                 onmouseenter="this.style.background='#16a34a'"
                                 onmouseleave="this.style.background='#15803d'">
                             ✅ APROBAR
-                        </button>
-                        <button onclick="rechazarUsuarioPendiente('${id}')" 
+                        &lt;/button>
+                        &lt;button onclick="rechazarUsuarioPendiente('${id}')" 
                                 style="background: #991b1b; color: white; border: none; padding: 7px 18px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: bold; transition: 0.2s;"
                                 onmouseenter="this.style.background='#b91c1c'"
                                 onmouseleave="this.style.background='#991b1b'">
                             ❌ RECHAZAR
-                        </button>
-                    </div>
-                </div>
+                        &lt;/button>
+                    &lt;/div>
+                &lt;/div>
             `;
             
             contenedor.appendChild(card);
@@ -1909,17 +2313,17 @@ function cargarSolicitudesEnModal() {
             font-size: 0.7rem;
             text-align: center;
         `;
-        footer.innerHTML = `📊 Total de solicitudes pendientes: <strong style="color: #fbbf24;">${totalSolicitudes}</strong>`;
+        footer.innerHTML = `📊 Total de solicitudes pendientes: &lt;strong style="color: #fbbf24;">${totalSolicitudes}&lt;/strong>`;
         contenedor.appendChild(footer);
         
     }).catch(error => {
         console.error('Error cargando solicitudes:', error);
         contenedor.innerHTML = `
-            <div style="color:#ef4444; font-size:0.85rem; text-align:center; padding:40px;">
-                <div style="font-size: 40px; margin-bottom: 15px;">❌</div>
-                <p style="font-weight: bold;">Error al cargar solicitudes</p>
-                <p style="font-size: 0.75rem; color: #64748b;">${error.message}</p>
-            </div>
+            &lt;div style="color:#ef4444; font-size:0.85rem; text-align:center; padding:40px;">
+                &lt;div style="font-size: 40px; margin-bottom: 15px;">❌&lt;/div>
+                &lt;p style="font-weight: bold;">Error al cargar solicitudes&lt;/p>
+                &lt;p style="font-size: 0.75rem; color: #64748b;">${error.message}&lt;/p>
+            &lt;/div>
         `;
     });
 }
@@ -1950,23 +2354,23 @@ function escucharRegistroPersonal() {
                 
                 let fila = document.createElement('tr');
                 fila.innerHTML = `
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <span style="background: #15803d; color: white; padding: 3px 8px; font-size: 0.7rem; font-weight: bold;">ACTIVO</span>
-                    </td>
-                    <td style="padding: 10px 8px; color: #fbbf24; font-weight: bold;">${escapeHTML(id)}</td>
-                    <td style="padding: 10px 8px; color: #fff;">${escapeHTML(nombreCompleto)}</td>
-                    <td style="padding: 10px 8px; color: #e2e8f0;">${escapeHTML(gradoTruncado)}</td>
-                    <td style="padding: 10px 8px; color: #94a3b8;">${escapeHTML(correoTruncado)}</td>
-                    <td style="padding: 10px 8px; color: #fbbf24;">${escapeHTML(u.componente || 'CONG')}</td>
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <span style="background: #fbbf24; color: #000; padding: 3px 8px; font-size: 0.65rem;">ADMIN</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <button onclick="deponerPersonal('${escapeHTML(id)}', 'administradores')" 
+                    &lt;td style="padding: 10px 8px; text-align: center;">
+                        &lt;span style="background: #15803d; color: white; padding: 3px 8px; font-size: 0.7rem; font-weight: bold;">ACTIVO&lt;/span>
+                    &lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #fbbf24; font-weight: bold;">${escapeHTML(id)}&lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #fff;">${escapeHTML(nombreCompleto)}&lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #e2e8f0;">${escapeHTML(gradoTruncado)}&lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #94a3b8;">${escapeHTML(correoTruncado)}&lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #fbbf24;">${escapeHTML(u.componente || 'CONG')}&lt;/td>
+                    &lt;td style="padding: 10px 8px; text-align: center;">
+                        &lt;span style="background: #fbbf24; color: #000; padding: 3px 8px; font-size: 0.65rem;">ADMIN&lt;/span>
+                    &lt;/td>
+                    &lt;td style="padding: 10px 8px; text-align: center;">
+                        &lt;button onclick="deponerPersonal('${escapeHTML(id)}', 'administradores')" 
                                 style="background: #ef4444; color: white; border: none; padding: 4px 10px; cursor: pointer; border-radius: 3px; font-size: 0.65rem;">
                             ELIMINAR
-                        </button>
-                    </td>
+                        &lt;/button>
+                    &lt;/td>
                 `;
                 tablaCuerpo.appendChild(fila);
             }
@@ -1980,23 +2384,23 @@ function escucharRegistroPersonal() {
                 
                 let fila = document.createElement('tr');
                 fila.innerHTML = `
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <span style="background: #2563eb; color: white; padding: 3px 8px; font-size: 0.7rem; font-weight: bold;">ACTIVO</span>
-                    </td>
-                    <td style="padding: 10px 8px; color: #fff;">${escapeHTML(id)}</td>
-                    <td style="padding: 10px 8px; color: #94a3b8;">${escapeHTML(nombreCompleto)}</td>
-                    <td style="padding: 10px 8px; color: #fff; font-weight: bold;">${escapeHTML(gradoTruncado)}</td>
-                    <td style="padding: 10px 8px; color: #94a3b8;">${escapeHTML(correoTruncado)}</td>
-                    <td style="padding: 10px 8px; color: #e2e8f0;">${escapeHTML(u.componente || 'FANB')}</td>
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <span style="background: #2563eb; color: white; padding: 3px 8px; font-size: 0.65rem;">OPERADOR</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center;">
-                        <button onclick="deponerPersonal('${escapeHTML(id)}', 'usuarios_aprobados')" 
+                    &lt;td style="padding: 10px 8px; text-align: center;">
+                        &lt;span style="background: #2563eb; color: white; padding: 3px 8px; font-size: 0.7rem; font-weight: bold;">ACTIVO&lt;/span>
+                    &lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #fff;">${escapeHTML(id)}&lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #94a3b8;">${escapeHTML(nombreCompleto)}&lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #fff; font-weight: bold;">${escapeHTML(gradoTruncado)}&lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #94a3b8;">${escapeHTML(correoTruncado)}&lt;/td>
+                    &lt;td style="padding: 10px 8px; color: #e2e8f0;">${escapeHTML(u.componente || 'FANB')}&lt;/td>
+                    &lt;td style="padding: 10px 8px; text-align: center;">
+                        &lt;span style="background: #2563eb; color: white; padding: 3px 8px; font-size: 0.65rem;">OPERADOR&lt;/span>
+                    &lt;/td>
+                    &lt;td style="padding: 10px 8px; text-align: center;">
+                        &lt;button onclick="deponerPersonal('${escapeHTML(id)}', 'usuarios_aprobados')" 
                                 style="background: #ef4444; color: white; border: none; padding: 4px 10px; cursor: pointer; border-radius: 3px; font-size: 0.65rem;">
                             ELIMINAR
-                        </button>
-                    </td>
+                        &lt;/button>
+                    &lt;/td>
                 `;
                 tablaCuerpo.appendChild(fila);
             }
@@ -2007,21 +2411,21 @@ function escucharRegistroPersonal() {
             
             if (totalRegistros === 0) {
                 tablaCuerpo.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;">
+                    &lt;tr>
+                        &lt;td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;">
                             📭 NO HAY PERSONAL REGISTRADO EN EL ARCHIVO CENTRAL
-                        </td>
-                    </tr>
+                        &lt;/td>
+                    &lt;/tr>
                 `;
             }
         }).catch(error => {
             console.error("Error cargando datos:", error);
             tablaCuerpo.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: #ef4444;">
+                &lt;tr>
+                    &lt;td colspan="8" style="text-align: center; padding: 40px; color: #ef4444;">
                         ❌ ERROR AL CARGAR DATOS: ${error.message}
-                    </td>
-                </tr>
+                    &lt;/td>
+                &lt;/tr>
             `;
         });
     }
@@ -2042,12 +2446,12 @@ function generarPopupHTML(markerId, latlng, config) {
     const displayCantidad = cantidad > 1 ? `x${cantidad}` : '';
     
     let html = `
-        <div style="
+        &lt;div style="
             font-family: 'Inter', sans-serif;
             min-width: 220px;
             padding: 4px;
         ">
-            <div style="
+            &lt;div style="
                 display: flex;
                 align-items: center;
                 gap: 12px;
@@ -2055,14 +2459,14 @@ function generarPopupHTML(markerId, latlng, config) {
                 border-bottom: 1px solid #334155;
                 padding-bottom: 8px;
             ">
-                <div style="
+                &lt;div style="
                     width: 8px;
                     height: 8px;
                     border-radius: 50%;
                     background: ${color};
                     box-shadow: 0 0 15px ${color}80;
-                "></div>
-                <div style="
+                ">&lt;/div>
+                &lt;div style="
                     font-size: 14px;
                     font-weight: 700;
                     color: ${color};
@@ -2070,8 +2474,8 @@ function generarPopupHTML(markerId, latlng, config) {
                     font-family: 'Orbitron', sans-serif;
                 ">
                     ${config.asset.toUpperCase()} ${displayCantidad}
-                </div>
-                <div style="
+                &lt;/div>
+                &lt;div style="
                     margin-left: auto;
                     font-size: 10px;
                     font-weight: 600;
@@ -2082,31 +2486,31 @@ function generarPopupHTML(markerId, latlng, config) {
                     border: 1px solid ${color}40;
                 ">
                     ${config.faction}
-                </div>
-            </div>
+                &lt;/div>
+            &lt;/div>
             
-            <div style="display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 11px; color: #94a3b8;">
-                <span style="color: #64748b;">COMPONENTE</span>
-                <span style="color: #e2e8f0; font-weight: 500;">${config.component}</span>
+            &lt;div style="display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 11px; color: #94a3b8;">
+                &lt;span style="color: #64748b;">COMPONENTE&lt;/span>
+                &lt;span style="color: #e2e8f0; font-weight: 500;">${config.component}&lt;/span>
                 
-                <span style="color: #64748b;">CANTIDAD</span>
-                <span style="color: #e2e8f0; font-weight: 500;">${cantidad}</span>
+                &lt;span style="color: #64748b;">CANTIDAD&lt;/span>
+                &lt;span style="color: #e2e8f0; font-weight: 500;">${cantidad}&lt;/span>
                 
-                <span style="color: #64748b;">COORDENADAS</span>
-                <span style="color: #94a3b8; font-size: 10px; font-family: 'JetBrains Mono', monospace;">${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}</span>
-            </div>
+                &lt;span style="color: #64748b;">COORDENADAS&lt;/span>
+                &lt;span style="color: #94a3b8; font-size: 10px; font-family: 'JetBrains Mono', monospace;">${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}&lt;/span>
+            &lt;/div>
     `;
     
-    if (userRole === "admin" && markerId) {
+    if (userRole === "admin" &amp;&amp; markerId) {
         html += `
-            <div style="
+            &lt;div style="
                 display: flex;
                 gap: 6px;
                 margin-top: 10px;
                 border-top: 1px solid #1e293b;
                 padding-top: 10px;
             ">
-                <button onclick="deleteMarker('${markerId}')" 
+                &lt;button onclick="deleteMarker('${markerId}')" 
                         style="
                             flex: 1;
                             background: rgba(239,68,68,0.15);
@@ -2127,8 +2531,8 @@ function generarPopupHTML(markerId, latlng, config) {
                         onmouseenter="this.style.background='rgba(239,68,68,0.25)'"
                         onmouseleave="this.style.background='rgba(239,68,68,0.15)'">
                     🗑️ ELIMINAR
-                </button>
-                <button onclick="abrirModalDesplazamiento('${markerId}', ${latlng.lat}, ${latlng.lng})" 
+                &lt;/button>
+                &lt;button onclick="abrirModalDesplazamiento('${markerId}', ${latlng.lat}, ${latlng.lng})" 
                         style="
                             flex: 1;
                             background: rgba(59,130,246,0.15);
@@ -2149,12 +2553,12 @@ function generarPopupHTML(markerId, latlng, config) {
                         onmouseenter="this.style.background='rgba(59,130,246,0.25)'"
                         onmouseleave="this.style.background='rgba(59,130,246,0.15)'">
                     🔄 DESPLAZAR
-                </button>
-            </div>
+                &lt;/button>
+            &lt;/div>
         `;
     }
     
-    html += `</div>`;
+    html += `&lt;/div>`;
     
     return html;
 }
@@ -2206,7 +2610,7 @@ function ejecutarDesplazamiento() {
         const esTanque = unidad === "Tanques";
         const esAgua = estaEnAgua(coords.lat, coords.lng);
         
-        if (esBarco && !esAgua) {
+        if (esBarco &amp;&amp; !esAgua) {
             showTacticalAlert("RESTRICCIÓN NAVAL", 
                 "🌊 OPERACIÓN CANCELADA: Los barcos solo pueden desplazarse a AGUAS TERRITORIALES.\n\n" +
                 "📍 El destino seleccionado está en TIERRA FIRME.\n" +
@@ -2215,7 +2619,7 @@ function ejecutarDesplazamiento() {
             return;
         }
         
-        if (esTanque && esAgua) {
+        if (esTanque &amp;&amp; esAgua) {
             showTacticalAlert("RESTRICCIÓN BLINDADA", 
                 "🚜 OPERACIÓN CANCELADA: Los tanques solo pueden desplazarse a TIERRA FIRME.\n\n" +
                 "📍 El destino seleccionado está en AGUA.\n" +
@@ -2325,14 +2729,14 @@ function ejecutarAnimacionMovimiento(markerId, data) {
     }).addTo(map);
     
     const arrowIcon = L.divIcon({
-        html: `<div style="background: #3b82f6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 15px rgba(59,130,246,0.8); animation: pulse 0.8s ease-in-out infinite;"></div>`,
+        html: `&lt;div style="background: #3b82f6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 15px rgba(59,130,246,0.8); animation: pulse 0.8s ease-in-out infinite;">&lt;/div>`,
         className: 'move-arrow',
         iconSize: [16, 16]
     });
     const destMarker = L.marker([destLat, destLng], { icon: arrowIcon }).addTo(map);
     
     const startArrowIcon = L.divIcon({
-        html: `<div style="background: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 15px rgba(239,68,68,0.8);"></div>`,
+        html: `&lt;div style="background: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 15px rgba(239,68,68,0.8);">&lt;/div>`,
         className: 'move-arrow-start',
         iconSize: [16, 16]
     });
@@ -2422,7 +2826,7 @@ function listenToCloud() {
     
     db.ref('mision_activa/puntos').on('child_added', (snapshot) => {
         const val = snapshot.val();
-        if (val && val.info && !window.activeMarkers[snapshot.key]) {
+        if (val &amp;&amp; val.info &amp;&amp; !window.activeMarkers[snapshot.key]) {
             createMarker({ lat: val.lat, lng: val.lng }, val.info, snapshot.key);
         }
     });
@@ -2431,7 +2835,7 @@ function listenToCloud() {
         const val = snapshot.val();
         const id = snapshot.key;
         
-        if (val && val.info && window.activeMarkers[id]) {
+        if (val &amp;&amp; val.info &amp;&amp; window.activeMarkers[id]) {
             if (val.isMoving) {
                 if (!moveIntervals[id]) {
                     window.activeMarkers[id].setLatLng([val.lat, val.lng]);
@@ -2476,7 +2880,7 @@ function listenToCloud() {
         const data = snapshot.val();
         const markerId = snapshot.key;
         
-        if (data && data.activo && window.activeMarkers[markerId]) {
+        if (data &amp;&amp; data.activo &amp;&amp; window.activeMarkers[markerId]) {
             if (!moveIntervals[markerId]) {
                 ejecutarAnimacionMovimiento(markerId, data);
             }
@@ -2523,7 +2927,7 @@ function iniciarApp(rango, rol) {
     
     const menuBtn = document.getElementById('menu-toggle');
     if (menuBtn) {
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth &lt;= 768) {
             menuBtn.style.display = 'block';
         } else {
             menuBtn.style.display = 'none';
@@ -2545,13 +2949,13 @@ window.addEventListener('resize', function() {
     const menuBtn = document.getElementById('menu-toggle');
     const isLoggedIn = sessionStorage.getItem('sitac_sesion') !== null;
     
-    if (menuBtn && isLoggedIn) {
-        if (window.innerWidth <= 768) {
+    if (menuBtn &amp;&amp; isLoggedIn) {
+        if (window.innerWidth &lt;= 768) {
             menuBtn.style.display = 'block';
         } else {
             menuBtn.style.display = 'none';
             const sidebar = document.getElementById('sidebar');
-            if (sidebar && sidebar.classList.contains('open')) {
+            if (sidebar &amp;&amp; sidebar.classList.contains('open')) {
                 sidebar.classList.remove('open');
             }
         }
@@ -2571,7 +2975,7 @@ function createMarker(latlng, config, id) {
     const iconoData = crearIconoProfesional(config.faction, config.asset, cantidad);
     
     const iconHTML = `
-        <div style="
+        &lt;div style="
             width: 48px;
             height: 48px;
             border-radius: 12px;
@@ -2587,7 +2991,7 @@ function createMarker(latlng, config, id) {
         ">
             ${iconoData.svg}
             ${cantidad > 1 ? `
-                <div style="
+                &lt;div style="
                     position: absolute;
                     top: -6px;
                     right: -6px;
@@ -2602,9 +3006,9 @@ function createMarker(latlng, config, id) {
                     box-shadow: 0 0 10px ${color}80;
                 ">
                     ${cantidad}
-                </div>
+                &lt;/div>
             ` : ''}
-            <div style="
+            &lt;div style="
                 position: absolute;
                 bottom: -4px;
                 left: 50%;
@@ -2623,8 +3027,8 @@ function createMarker(latlng, config, id) {
                 box-shadow: 0 0 10px ${color}60;
             ">
                 ${iconoData.label}
-            </div>
-        </div>
+            &lt;/div>
+        &lt;/div>
     `;
     
     const icon = L.divIcon({
@@ -2759,7 +3163,7 @@ function actualizarEstadisticas() {
         
         for (let key in datos) {
             const item = datos[key];
-            if (item && item.info) {
+            if (item &amp;&amp; item.info) {
                 totalActivos++;
                 const cantidad = item.info.cantidad || 1;
                 totalCantidad += cantidad;
@@ -2795,13 +3199,13 @@ function actualizarEstadisticas() {
                 const percent = totalCantidad > 0 ? (count / totalCantidad * 100).toFixed(1) : '0';
                 const barWidth = (count / maxCompValue * 100);
                 statsComponentesDiv.innerHTML += `
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 180px; font-size: 12px;">${comp}</div>
-                        <div style="flex: 1; background: #0f172a; height: 20px; border-radius: 2px; overflow: hidden;">
-                            <div style="width: ${barWidth}%; background: #fbbf24; height: 100%;"></div>
-                        </div>
-                        <div style="width: 80px; font-size: 12px; font-weight: bold;">${count} (${percent}%)</div>
-                    </div>
+                    &lt;div style="display: flex; align-items: center; gap: 10px;">
+                        &lt;div style="width: 180px; font-size: 12px;">${comp}&lt;/div>
+                        &lt;div style="flex: 1; background: #0f172a; height: 20px; border-radius: 2px; overflow: hidden;">
+                            &lt;div style="width: ${barWidth}%; background: #fbbf24; height: 100%;">&lt;/div>
+                        &lt;/div>
+                        &lt;div style="width: 80px; font-size: 12px; font-weight: bold;">${count} (${percent}%)&lt;/div>
+                    &lt;/div>
                 `;
             }
         }
@@ -2823,23 +3227,23 @@ function actualizarEstadisticas() {
                 if (unidad === 'Unidad Médica') color = '#ec4898';
                 
                 statsUnidadesDiv.innerHTML += `
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 140px; font-size: 12px;">${unidad}</div>
-                        <div style="flex: 1; background: #0f172a; height: 20px; border-radius: 2px; overflow: hidden;">
-                            <div style="width: ${barWidth}%; background: ${color}; height: 100%;"></div>
-                        </div>
-                        <div style="width: 80px; font-size: 12px; font-weight: bold;">${count} (${percent}%)</div>
-                    </div>
+                    &lt;div style="display: flex; align-items: center; gap: 10px;">
+                        &lt;div style="width: 140px; font-size: 12px;">${unidad}&lt;/div>
+                        &lt;div style="flex: 1; background: #0f172a; height: 20px; border-radius: 2px; overflow: hidden;">
+                            &lt;div style="width: ${barWidth}%; background: ${color}; height: 100%;">&lt;/div>
+                        &lt;/div>
+                        &lt;div style="width: 80px; font-size: 12px; font-weight: bold;">${count} (${percent}%)&lt;/div>
+                    &lt;/div>
                 `;
             }
         }
         
         const statsResumenDiv = document.getElementById('stats-resumen');
         statsResumenDiv.innerHTML = `
-            <div>🔹 Total de activos desplegados: <strong style="color:#fbbf24">${totalActivos}</strong></div>
-            <div>🔹 Cantidad total de unidades: <strong style="color:#fbbf24">${totalCantidad}</strong></div>
-            <div>🔹 Relación Aliados/Enemigos: <strong style="color:#4ade80">${aliados}</strong> : <strong style="color:#ef4444">${enemigos}</strong></div>
-            <div>🔹 Promedio de unidades por activo: <strong style="color:#38bdf8">${totalActivos > 0 ? (totalCantidad / totalActivos).toFixed(1) : '0'}</strong></div>
+            &lt;div>🔹 Total de activos desplegados: &lt;strong style="color:#fbbf24">${totalActivos}&lt;/strong>&lt;/div>
+            &lt;div>🔹 Cantidad total de unidades: &lt;strong style="color:#fbbf24">${totalCantidad}&lt;/strong>&lt;/div>
+            &lt;div>🔹 Relación Aliados/Enemigos: &lt;strong style="color:#4ade80">${aliados}&lt;/strong> : &lt;strong style="color:#ef4444">${enemigos}&lt;/strong>&lt;/div>
+            &lt;div>🔹 Promedio de unidades por activo: &lt;strong style="color:#38bdf8">${totalActivos > 0 ? (totalCantidad / totalActivos).toFixed(1) : '0'}&lt;/strong>&lt;/div>
         `;
         
     }).catch(error => {
@@ -2906,3 +3310,78 @@ if (document.readyState === 'loading') {
 } else {
     verificarSesionYcargar();
 }
+
+
+
+// ============================================================
+// ===== SISTEMA DE EMERGENCIAS =====
+// ============================================================
+
+/**
+ * Función de emergencia para reiniciar el sistema en caso de error crítico
+ */
+function emergenciaReiniciarSistema() {
+    try {
+        logger.warn('🚨 INICIANDO PROTOCOLO DE EMERGENCIA');
+        
+        // Limpiar logs
+        if (typeof logger !== 'undefined' &amp;&amp; logger.clearLogs) {
+            logger.clearLogs();
+        }
+        
+        // Recargar la página
+        window.location.reload();
+    } catch (error) {
+        console.error('Error en protocolo de emergencia:', error);
+        window.location.reload();
+    }
+}
+
+/**
+ * Función para exportar logs a un archivo (útil para diagnóstico)
+ */
+function exportarLogs() {
+    try {
+        if (typeof logger !== 'undefined' &amp;&amp; logger.exportLogs) {
+            const logs = logger.exportLogs();
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `logs_sitac_${new Date().toISOString().substring(0, 10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            logger.success('✅ Logs exportados correctamente');
+        }
+    } catch (error) {
+        console.error('Error exportando logs:', error);
+    }
+}
+
+// Exponer funciones de emergencia globalmente
+window.emergenciaReiniciarSistema = emergenciaReiniciarSistema;
+window.exportarLogs = exportarLogs;
+
+logger.info('✅ Sistema de emergencias inicializado');</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#ejecutarConSeguridad">ejecutarConSeguridad</a></li><li><a href="global.html#emergenciaReiniciarSistema">emergenciaReiniciarSistema</a></li><li><a href="global.html#estaEnAgua">estaEnAgua</a></li><li><a href="global.html#exportarLogs">exportarLogs</a></li><li><a href="global.html#validarCedula">validarCedula</a></li><li><a href="global.html#validarCedulaGenerica">validarCedulaGenerica</a></li><li><a href="global.html#validarContrasena">validarContrasena</a></li><li><a href="global.html#validarDato">validarDato</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Wed Jul 22 2026 09:01:30 GMT-0400 (hora de Venezuela)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
