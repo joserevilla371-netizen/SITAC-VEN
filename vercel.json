@@ -14,23 +14,11 @@
       "use": "@vercel/static"
     },
     {
+      "src": "*.webp",
+      "use": "@vercel/static"
+    },
+    {
       "src": "assets/*.png",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "assets/*.jpg",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "assets/*.jpeg",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "assets/*.svg",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "assets/*.webp",
       "use": "@vercel/static"
     }
   ],
