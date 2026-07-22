@@ -1,8 +1,18 @@
-# Configuración local (NO SUBIR)
-config.js
+
+---
+
+## 🚀 PASO 5: CREAR `.gitignore` ACTUALIZADO
+
+```gitignore
+# Documentación generada
+docs/
 
 # Dependencias
 node_modules/
+package-lock.json
+
+# Configuración local (NO SUBIR)
+config.js
 
 # Archivos de sistema
 .DS_Store

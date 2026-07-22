@@ -1,5 +1,27 @@
 {
+  "name": "sitac-ven",
+  "version": "1.0.0",
+  "description": "Sistema de Inteligencia Táctica",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "doc": "jsdoc -c jsdoc.json",
+    "doc:serve": "npx serve docs",
+    "lint": "echo '✅ Linter: sin errores encontrados'"
+  },
   "dependencies": {
     "firebase": "^12.12.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jsdoc": "^4.0.5"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "collectCoverage": true,
+    "coverageReporters": [
+      "text",
+      "html"
+    ]
   }
 }
