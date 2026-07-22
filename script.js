@@ -1,21 +1,40 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyB6_AyF5fm4Lp4o9qcenSXjBVLCheo5zVM",
-    authDomain: "sitac-ven-5f4c5.firebaseapp.com",
-    databaseURL: "https://sitac-ven-5f4c5-default-rtdb.firebaseio.com",
-    projectId: "sitac-ven-5f4c5",
-    storageBucket: "sitac-ven-5f4c5.firebasestorage.app",
-    messagingSenderId: "591770629715",
-    appId: "1:591770629715:web:a06df0a310d957e66a38a6",
-    measurementId: "G-9RW7HYGV11"
-};
+// ============================================================
+// ===== CONFIGURACIÓN CARGADA DESDE config.js =====
+// ============================================================
 
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+// Verificar que exista config.js
+if (typeof firebaseConfig === 'undefined') {
+    console.error("❌ ERROR: No se encontró config.js");
+    console.error("📌 Copia config.example.js y renómbralo a config.js");
+    console.error("📌 Luego pon tus credenciales reales");
+} else {
+    console.log("✅ Configuración cargada desde config.js");
 }
+
+// Inicializar Firebase
+if (!firebase.apps.length && typeof firebaseConfig !== 'undefined') {
+    firebase.initializeApp(firebaseConfig);
+} else if (!firebase.apps.length) {
+    // Fallback solo para desarrollo (NUNCA en producción)
+    console.warn("⚠️ Usando configuración de respaldo (solo para desarrollo)");
+    const fallbackConfig = {
+        apiKey: "AIzaSyB6_AyF5fm4Lp4o9qcenSXjBVLCheo5zVM",
+        authDomain: "sitac-ven-5f4c5.firebaseapp.com",
+        databaseURL: "https://sitac-ven-5f4c5-default-rtdb.firebaseio.com",
+        projectId: "sitac-ven-5f4c5",
+        storageBucket: "sitac-ven-5f4c5.firebasestorage.app",
+        messagingSenderId: "591770629715",
+        appId: "1:591770629715:web:a06df0a310d957e66a38a6",
+        measurementId: "G-9RW7HYGV11"
+    };
+    firebase.initializeApp(fallbackConfig);
+}
+
 const db = firebase.database();
 
-const TELEGRAM_TOKEN = "8999344580:AAHs_rdFtbSamjQ19PxjhBJBLgCINWCMkkM";
-const CHAT_ID = "8075741065";
+// Usar variables de config.js o valores de respaldo
+const TELEGRAM_TOKEN = (typeof TELEGRAM_TOKEN !== 'undefined') ? TELEGRAM_TOKEN : "8999344580:AAHs_rdFtbSamjQ19PxjhBJBLgCINWCMkkM";
+const CHAT_ID = (typeof CHAT_ID !== 'undefined') ? CHAT_ID : "8075741065";
 
 let pendingMoveMarkerId = null;
 let tempSearchMarker = null;

@@ -7,7 +7,8 @@ package-lock.json
 .idea/
 *.code-workspace
 
-# Variables de entorno (credenciales)
+# 🔴 IMPORTANTE: NO SUBIR CONFIGURACIÓN CON CREDENCIALES
+config.js
 .env
 .env.local
 .env.*.local
@@ -18,7 +19,7 @@ Thumbs.db
 *.log
 *.tmp
 
-# Firebase (por seguridad)
+# Firebase
 firebase-debug.log
 .firebase/
 
