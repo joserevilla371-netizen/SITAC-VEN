@@ -914,6 +914,29 @@ body, html {
     filter: drop-shadow(0 0 30px rgba(251, 191, 36, 0.8));
 }
 
+/* ===== ESTILOS PARA MENSAJES DE ERROR EN LOGIN ===== */
+.login-error-msg {
+    font-size: 0.75rem;
+    min-height: 24px;
+    margin-top: -5px;
+    margin-bottom: 10px;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.login-error-msg.success {
+    color: #4ade80;
+}
+
+.login-error-msg.warning {
+    color: #fbbf24;
+}
+
+.login-error-msg.danger {
+    color: #ef4444;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     #navbar {

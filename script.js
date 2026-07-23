@@ -23,6 +23,110 @@ let moveAnimations = {};
 let isAdminUser = false;
 
 // ============================================================
+// ===== VARIABLES PARA CONTROL DE INTENTOS =====
+// ============================================================
+const intentosFallidos = {};
+const MAX_INTENTOS = 10;
+
+// ============================================================
+// ===== FUNCIÓN DE ERROR GLOBAL =====
+// ============================================================
+function showErrorGlobal(titulo, mensaje, subtitulo = "", icono = "❌") {
+    const modal = document.getElementById('modal-error-global');
+    const titleEl = document.getElementById('error-title');
+    const msgEl = document.getElementById('error-message');
+    const subEl = document.getElementById('error-sub');
+    const iconEl = document.getElementById('error-icon');
+    
+    if (titleEl) titleEl.textContent = titulo;
+    if (msgEl) msgEl.textContent = mensaje;
+    if (subEl) subEl.textContent = subtitulo;
+    if (iconEl) iconEl.textContent = icono;
+    
+    if (modal) modal.style.display = "block";
+}
+
+function cerrarErrorGlobal() {
+    const modal = document.getElementById('modal-error-global');
+    if (modal) modal.style.display = "none";
+}
+
+// ============================================================
+// ===== FUNCIÓN PARA ACTUALIZAR CONTADOR DE INTENTOS =====
+// ============================================================
+function actualizarContadorIntentos(cedula, tipo) {
+    const intentos = intentosFallidos[cedula] || 0;
+    const restantes = MAX_INTENTOS - intentos;
+    const elementoId = tipo === 'admin' ? 'admin-login-intentos' : 'login-intentos';
+    const elemento = document.getElementById(elementoId);
+    
+    if (elemento) {
+        if (intentos >= MAX_INTENTOS) {
+            elemento.textContent = '🔒 CUENTA BLOQUEADA - Recupera tu contraseña';
+            elemento.style.color = '#ef4444';
+        } else if (intentos > 0) {
+            elemento.textContent = `⚠️ Intentos restantes: ${restantes} de ${MAX_INTENTOS}`;
+            elemento.style.color = '#fbbf24';
+        } else {
+            elemento.textContent = '';
+        }
+    }
+}
+
+// ============================================================
+// ===== FUNCIÓN PARA VERIFICAR BLOQUEO DE CUENTA =====
+// ============================================================
+function verificarBloqueo(cedula) {
+    if (intentosFallidos[cedula] && intentosFallidos[cedula] >= MAX_INTENTOS) {
+        return true;
+    }
+    return false;
+}
+
+// ============================================================
+// ===== FUNCIÓN PARA REGISTRAR INTENTO FALLIDO =====
+// ============================================================
+function registrarIntentoFallido(cedula, tipo) {
+    if (!intentosFallidos[cedula]) {
+        intentosFallidos[cedula] = 1;
+    } else {
+        intentosFallidos[cedula]++;
+    }
+    
+    const restantes = MAX_INTENTOS - intentosFallidos[cedula];
+    actualizarContadorIntentos(cedula, tipo);
+    
+    // Mostrar mensaje en el campo de error correspondiente
+    const errorMsgId = tipo === 'admin' ? 'admin-login-error-msg' : 'login-error-msg';
+    const errorMsg = document.getElementById(errorMsgId);
+    
+    if (intentosFallidos[cedula] >= MAX_INTENTOS) {
+        // 🔒 CUENTA BLOQUEADA
+        if (errorMsg) {
+            errorMsg.textContent = '🔒 CUENTA BLOQUEADA - Usa "Recuperar acceso"';
+            errorMsg.className = 'login-error-msg danger';
+            errorMsg.style.fontWeight = '700';
+        }
+        return false;
+    } else {
+        // ⚠️ INTENTOS RESTANTES
+        if (errorMsg) {
+            const emoji = restantes <= 3 ? '⚠️' : '❌';
+            errorMsg.textContent = `${emoji} Contraseña incorrecta. Intentos restantes: ${restantes}`;
+            errorMsg.className = restantes <= 3 ? 'login-error-msg warning' : 'login-error-msg danger';
+            errorMsg.style.fontWeight = '500';
+        }
+    }
+    
+    // Limpiar el campo de contraseña y poner foco
+    const passInput = tipo === 'admin' ? 'admin-log-pass' : 'log-pass';
+    document.getElementById(passInput).value = '';
+    document.getElementById(passInput).focus();
+    
+    return restantes;
+}
+
+// ============================================================
 // ===== FUNCIÓN MEJORADA DE DETECCIÓN DE AGUA =====
 // ============================================================
 function estaEnAgua(lat, lng) {
@@ -102,8 +206,10 @@ function estaEnAgua(lat, lng) {
     
     return false;
 }
-// ============================================================
 
+// ============================================================
+// ===== FUNCIONES DE VALIDACIÓN =====
+// ============================================================
 function validarCedula(input) {
     const valor = input.value;
     const helper = document.getElementById('cedula-helper');
@@ -156,71 +262,22 @@ function validarCedulaGenerica(valor, helper) {
 function validarContrasena(input) {
     const valor = input.value;
     const helper = document.getElementById('contrasena-helper');
-    
-    if (valor.length === 0) {
-        if (helper) {
-            helper.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
-            helper.className = 'contrasena-helper';
-        }
-        input.className = '';
-        return false;
-    }
-    
-    const tieneLetra = /[a-zA-Z]/.test(valor);
-    const tieneNumero = /[0-9]/.test(valor);
-    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(valor);
-    const longitudCorrecta = valor.length === 8;
-    const tieneEspacios = /\s/.test(valor);
-    
-    let esValida = false;
-    let mensaje = '';
-    let clase = 'contrasena-helper';
-    
-    if (tieneEspacios) {
-        mensaje = '❌ No se permiten espacios en blanco';
-        clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
-    } else if (!longitudCorrecta) {
-        mensaje = `❌ Debe tener exactamente 8 caracteres (actual: ${valor.length})`;
-        clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
-    } else if (!tieneLetra) {
-        mensaje = '❌ Debe contener al menos una letra (A-Z, a-z)';
-        clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
-    } else if (!tieneNumero) {
-        mensaje = '❌ Debe contener al menos un número (0-9)';
-        clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
-    } else if (!tieneSigno) {
-        mensaje = '❌ Debe contener al menos un signo (!@#$%^&*)';
-        clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
-    } else {
-        mensaje = '✅ Contraseña válida (8 caracteres, letras+números+signos)';
-        clase = 'contrasena-helper success';
-        input.className = 'contrasena-valid';
-        esValida = true;
-    }
-    
-    if (helper) {
-        helper.textContent = mensaje;
-        helper.className = clase;
-    }
-    
-    return esValida;
+    return validarContrasenaGenerica(valor, helper, input);
 }
 
 function validarContrasenaAdmin(input) {
     const valor = input.value;
     const helper = document.getElementById('contrasena-helper-admin');
-    
+    return validarContrasenaGenerica(valor, helper, input);
+}
+
+function validarContrasenaGenerica(valor, helper, input) {
     if (valor.length === 0) {
         if (helper) {
             helper.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
             helper.className = 'contrasena-helper';
         }
-        input.className = '';
+        if (input) input.className = '';
         return false;
     }
     
@@ -237,27 +294,27 @@ function validarContrasenaAdmin(input) {
     if (tieneEspacios) {
         mensaje = '❌ No se permiten espacios en blanco';
         clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
+        if (input) input.className = 'contrasena-invalid';
     } else if (!longitudCorrecta) {
         mensaje = `❌ Debe tener exactamente 8 caracteres (actual: ${valor.length})`;
         clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
+        if (input) input.className = 'contrasena-invalid';
     } else if (!tieneLetra) {
         mensaje = '❌ Debe contener al menos una letra (A-Z, a-z)';
         clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
+        if (input) input.className = 'contrasena-invalid';
     } else if (!tieneNumero) {
         mensaje = '❌ Debe contener al menos un número (0-9)';
         clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
+        if (input) input.className = 'contrasena-invalid';
     } else if (!tieneSigno) {
         mensaje = '❌ Debe contener al menos un signo (!@#$%^&*)';
         clase = 'contrasena-helper error';
-        input.className = 'contrasena-invalid';
+        if (input) input.className = 'contrasena-invalid';
     } else {
         mensaje = '✅ Contraseña válida (8 caracteres, letras+números+signos)';
         clase = 'contrasena-helper success';
-        input.className = 'contrasena-valid';
+        if (input) input.className = 'contrasena-valid';
         esValida = true;
     }
     
@@ -269,6 +326,33 @@ function validarContrasenaAdmin(input) {
     return esValida;
 }
 
+// ============================================================
+// ===== FUNCIÓN PARA VERIFICAR SI LA CÉDULA YA ESTÁ REGISTRADA =====
+// ============================================================
+function verificarCedulaRegistrada(cedula) {
+    return new Promise((resolve) => {
+        const promesas = [
+            db.ref('usuarios_aprobados/' + cedula).once('value'),
+            db.ref('usuarios_pendientes/' + cedula).once('value'),
+            db.ref('administradores/' + cedula).once('value'),
+            db.ref('administradores_pendientes/' + cedula).once('value')
+        ];
+        
+        Promise.all(promesas).then(([aprobados, pendientes, admins, adminsPend]) => {
+            if (aprobados.exists() || pendientes.exists() || admins.exists() || adminsPend.exists()) {
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+        }).catch(() => {
+            resolve(false);
+        });
+    });
+}
+
+// ============================================================
+// ===== FUNCIONES DE MODALES =====
+// ============================================================
 function abrirModalRegistroMando() {
     closeModals();
     openModal('modal-admin-registro');
@@ -375,7 +459,7 @@ function openModal(id) {
 
 function closeModals() { 
     document.querySelectorAll('.modal').forEach(m => { 
-        if (m.id !== 'modal-alerta-tactica') m.style.display = "none"; 
+        if (m.id !== 'modal-alerta-tactica' && m.id !== 'modal-error-global') m.style.display = "none"; 
     }); 
 }
 
@@ -386,6 +470,9 @@ function toggleSidebar() {
     }
 }
 
+// ============================================================
+// ===== CONFIGURACIÓN DEL MAPA =====
+// ============================================================
 const venezuelaBounds = [[0.65, -73.5], [15.8, -58.5]];
 
 const capaOscura = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
@@ -531,13 +618,13 @@ function parsearCoordenadas(input) {
 function buscarCoordenadas() {
     const input = document.getElementById('coord-search-input').value.trim();
     if (!input) {
-        showTacticalAlert("CAMPO VACÍO", "Ingrese coordenadas (ej: 11.389886, -69.675880)", "⚠️", "#fbbf24");
+        showErrorGlobal("CAMPO VACÍO", "Ingrese coordenadas (ej: 11.389886, -69.675880)", "", "⚠️");
         return;
     }
     
     const coords = parsearCoordenadas(input);
     if (!coords) {
-        showTacticalAlert("FORMATO INCORRECTO", "Use formato: latitud, longitud (ej: 11.389886, -69.675880)", "⚠️", "#fbbf24");
+        showErrorGlobal("FORMATO INCORRECTO", "Use formato: latitud, longitud (ej: 11.389886, -69.675880)", "", "⚠️");
         return;
     }
     
@@ -582,15 +669,18 @@ function buscarCoordenadas() {
             const mensaje = pais 
                 ? `🌍 Ubicación detectada: ${pais}\n\n⛔ Las coordenadas están fuera del territorio venezolano.`
                 : `⛔ No se pudo verificar la ubicación. Asegúrese de estar conectado a Internet.`;
-            showTacticalAlert("FUERA DE VENEZUELA", mensaje, "🚫", "#ef4444");
+            showErrorGlobal("FUERA DE VENEZUELA", mensaje, "Verifique las coordenadas e intente nuevamente.", "🚫");
             addLog(`BÚSQUEDA: Coordenadas [${coords.lat}, ${coords.lng}] - País: ${pais || "Desconocido"} - FUERA DE VENEZUELA`);
         }
     }).catch(error => {
-        showTacticalAlert("ERROR DE VERIFICACIÓN", "No se pudo validar la ubicación. Verifique su conexión a Internet.", "❌", "#ef4444");
+        showErrorGlobal("ERROR DE VERIFICACIÓN", "No se pudo validar la ubicación. Verifique su conexión a Internet.", error.message, "❌");
         addLog(`❌ ERROR: No se pudo validar coordenadas [${coords.lat}, ${coords.lng}]`);
     });
 }
 
+// ============================================================
+// ===== CUARTELES =====
+// ============================================================
 const listaCompletaCuarteles = [
     { nombre: "Comando Estratégico Operacional (CEOFANB) - Fuerte Tiuna", componente: "Ejército Bolivariano", lat: 10.461934, lng: -66.897980 , icono: "🏰" },
     { nombre: "Batallón de Infantería Mecanizada Nro. 143 'Coronel Atanasio Girardot' - Coro", componente: "Ejército Bolivariano", lat: 11.392271, lng: -69.669407, icono: "🏰" },
@@ -616,11 +706,8 @@ const listaCompletaCuarteles = [
     { nombre: "Comando de Zona Operativa de Defensa Integral Nro. 13 ZODI Lara", componente: "Ejército Bolivariano", lat: 10.074103224648315, lng: -69.28374096458246, icono: "🏰" },
     { nombre: "ZODI Milicia Falcon", componente: "Milicia Bolivariana", lat: 11.695871924351497, lng: -70.19660914943023, icono: "🏛️" },
     { nombre: "ZODI Nro. 11 Zulia", componente: "Ejército Bolivariano", lat: 10.727604578881763,  lng: -71.61989274865039, icono: "🏰" },                                                                                                                                            
-];  
+];
 
-// ============================================================
-// ===== POPUP PROFESIONAL PARA CUARTELES =====
-// ============================================================
 function generarPopupCuartel(cuartel) {
     return `
         <div style="
@@ -699,6 +786,9 @@ function agregarCuarteles() {
     addLog(`SISTEMA: ${listaCompletaCuarteles.length} cuarteles cargados.`);
 }
 
+// ============================================================
+// ===== VARIABLES GLOBALES =====
+// ============================================================
 let userRole = "usuario";
 let currentUserRank = "USUARIO ANÓNIMO";
 window.activeMarkers = {};
@@ -706,7 +796,7 @@ let moveLines = {};
 let moveIntervals = {};
 
 // ============================================================
-// ===== ICONOS PROFESIONALES EN SVG =====
+// ===== ICONOS PROFESIONALES =====
 // ============================================================
 function crearIconoProfesional(faction, asset, cantidad) {
     const color = faction === 'ALIADO' ? '#4ade80' : '#ef4444';
@@ -853,9 +943,9 @@ function crearIconoProfesional(faction, asset, cantidad) {
 
 function confirmarDespliegueCoordenadas(tipo) {
     if (userRole !== "admin") {
-        showTacticalAlert("ACCESO DENEGADO", 
+        showErrorGlobal("ACCESO DENEGADO", 
             "Solo el personal de MANDO puede ejecutar órdenes de despliegue.", 
-            "🔒", "#ef4444");
+            "Contacte al administrador del sistema.", "🔒");
         return;
     }
     
@@ -874,45 +964,41 @@ function confirmarDespliegueCoordenadas(tipo) {
     }
     
     if (!coordenadaStr.trim()) {
-        showTacticalAlert("COORDENADA REQUERIDA", "Debe ingresar las coordenadas del despliegue.", "⚠️", "#fbbf24");
+        showErrorGlobal("COORDENADA REQUERIDA", "Debe ingresar las coordenadas del despliegue.", "Ej: 11.389886, -69.675880", "⚠️");
         return;
     }
     
     const coords = parsearCoordenadas(coordenadaStr);
     if (!coords) {
-        showTacticalAlert("FORMATO INCORRECTO", "Use formato: latitud, longitud (ej: 11.389886, -69.675880)", "⚠️", "#fbbf24");
+        showErrorGlobal("FORMATO INCORRECTO", "Use formato: latitud, longitud (ej: 11.389886, -69.675880)", "", "⚠️");
         return;
     }
     
     if (unidad === "Barcos" || unidad === "Barco") {
         if (!estaEnAgua(coords.lat, coords.lng)) {
-            showTacticalAlert("RESTRICCIÓN NAVAL", 
-                "🌊 OPERACIÓN CANCELADA: Los barcos solo pueden desplegarse en AGUAS TERRITORIALES.\n\n" +
-                "📍 La ubicación seleccionada está en TIERRA FIRME.\n" +
-                `📌 Coordenadas: ${coords.lat}, ${coords.lng}\n\n` +
-                "💡 Sugerencia: Prueba con coordenadas en el mar (ej: 11.5, -69.0)", 
-                "🚫", "#fbbf24");
+            showErrorGlobal("RESTRICCIÓN NAVAL", 
+                "🌊 Los barcos solo pueden desplegarse en AGUAS TERRITORIALES.\n\n📍 La ubicación seleccionada está en TIERRA FIRME.\n" +
+                `📌 Coordenadas: ${coords.lat}, ${coords.lng}`, 
+                "💡 Sugerencia: Prueba con coordenadas en el mar (ej: 11.5, -69.0)", "🚫");
             return;
         }
     }
 
     if (unidad === "Tanques") {
         if (estaEnAgua(coords.lat, coords.lng)) {
-            showTacticalAlert("RESTRICCIÓN BLINDADA", 
-                "🚜 OPERACIÓN CANCELADA: Los tanques solo pueden operar en TIERRA FIRME.\n\n" +
-                "📍 La ubicación seleccionada está en AGUA.\n" +
-                `📌 Coordenadas: ${coords.lat}, ${coords.lng}\n\n` +
-                "💡 Sugerencia: Prueba con coordenadas en tierra (ej: 10.5, -66.9)", 
-                "🚫", "#fbbf24");
+            showErrorGlobal("RESTRICCIÓN BLINDADA", 
+                "🚜 Los tanques solo pueden operar en TIERRA FIRME.\n\n📍 La ubicación seleccionada está en AGUA.\n" +
+                `📌 Coordenadas: ${coords.lat}, ${coords.lng}`, 
+                "💡 Sugerencia: Prueba con coordenadas en tierra (ej: 10.5, -66.9)", "🚫");
             return;
         }
     }
 
     if (unidad === "Aviones" || unidad === "Avion") {
         if (estaEnAgua(coords.lat, coords.lng)) {
-            showTacticalAlert("RESTRICCIÓN AÉREA", 
-                "✈️ OPERACIÓN CANCELADA: Las unidades aéreas requieren terreno sólido para operar.", 
-                "🚫", "#fbbf24");
+            showErrorGlobal("RESTRICCIÓN AÉREA", 
+                "✈️ Las unidades aéreas requieren terreno sólido para operar.", 
+                `📌 Coordenadas: ${coords.lat}, ${coords.lng}`, "🚫");
             return;
         }
     }
@@ -957,6 +1043,9 @@ function cerrarSesion() {
     location.reload();
 }
 
+// ============================================================
+// ===== REGISTRO DE USUARIO =====
+// ============================================================
 function handleRegistro() {
     const v_nombre = document.getElementById('reg-nombre').value.trim();
     const v_apellido = document.getElementById('reg-apellido').value.trim();
@@ -967,12 +1056,12 @@ function handleRegistro() {
     const v_pass = document.getElementById('reg-pass').value.trim();
 
     if (!v_nombre || !v_apellido || !v_cedula || !v_grado || !v_correo || !v_pass) {
-        showTacticalAlert("CAMPOS INCOMPLETOS", "Todos los campos son obligatorios. Complete la información requerida.", "⚠️", "#fbbf24");
+        showErrorGlobal("CAMPOS INCOMPLETOS", "Todos los campos son obligatorios. Complete la información requerida.", "", "⚠️");
         return;
     }
 
     if (!/^\d{7,8}$/.test(v_cedula)) {
-        showTacticalAlert("CÉDULA INVÁLIDA", "La cédula debe contener solo números y tener entre 7 y 8 dígitos.", "⚠️", "#fbbf24");
+        showErrorGlobal("CÉDULA INVÁLIDA", "La cédula debe contener solo números y tener entre 7 y 8 dígitos.", "", "⚠️");
         return;
     }
 
@@ -983,112 +1072,120 @@ function handleRegistro() {
     const tieneEspacios = /\s/.test(v_pass);
     
     if (tieneEspacios) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña no puede contener espacios en blanco.", "⚠️", "#fbbf24");
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", "La contraseña no puede contener espacios en blanco.", "", "⚠️");
         return;
     }
     
     if (!longitudCorrecta) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", `La contraseña debe tener exactamente 8 caracteres (actual: ${v_pass.length}).`, "⚠️", "#fbbf24");
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", `La contraseña debe tener exactamente 8 caracteres (actual: ${v_pass.length}).`, "", "⚠️");
         return;
     }
     
     if (!tieneLetra) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos una letra (A-Z, a-z).", "⚠️", "#fbbf24");
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos una letra (A-Z, a-z).", "", "⚠️");
         return;
     }
     
     if (!tieneNumero) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un número (0-9).", "⚠️", "#fbbf24");
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un número (0-9).", "", "⚠️");
         return;
     }
     
     if (!tieneSigno) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un signo (!@#$%^&*).", "⚠️", "#fbbf24");
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un signo (!@#$%^&*).", "", "⚠️");
         return;
     }
 
     if (v_grado === "") {
-        showTacticalAlert("JERARQUÍA REQUERIDA", "Debe seleccionar una jerarquía.", "⚠️", "#fbbf24");
+        showErrorGlobal("JERARQUÍA REQUERIDA", "Debe seleccionar una jerarquía.", "", "⚠️");
         return;
     }
 
-    const fechaRegistro = new Date().toLocaleString('es-VE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    });
+    verificarCedulaRegistrada(v_cedula).then(registrada => {
+        if (registrada) {
+            showErrorGlobal("USUARIO YA REGISTRADO", 
+                "⚠️ La cédula ingresada ya se encuentra registrada en el sistema.\n\n" +
+                "Si olvidaste tu contraseña, utiliza la opción de recuperación de acceso.", 
+                "No es posible registrar una cédula duplicada.", "⚠️");
+            return;
+        }
 
-    const datos = {
-        nombre: v_nombre, 
-        apellido: v_apellido, 
-        cedula: v_cedula,
-        grado: v_grado, 
-        correo: v_correo, 
-        componente: v_componente,
-        pass: v_pass, 
-        role: "usuario", 
-        aprobado: false,
-        fechaRegistro: fechaRegistro,
-        timestamp: Date.now()
-    };
-
-    db.ref('usuarios_pendientes/' + v_cedula).set(datos)
-        .then(() => {
-            if (typeof emailjs !== 'undefined') {
-                return emailjs.send("service_wm4ye18", "template_1600d5d", {
-                    nombre: v_grado + " " + v_nombre + " " + v_apellido,
-                    cedula: v_cedula, 
-                    componente: v_componente, 
-                    reply_to: "joserevilla371@gmail.com"
-                });
-            }
-        })
-        .then(() => {
-            closeModals();
-            showTacticalAlert("📡 COMUNICACIÓN ENVIADA", 
-                "Solicitud de acceso transmitida exitosamente.\n\n" +
-                "El Administrador ha sido notificado para la aprobación.\n" +
-                "Espere la confirmación para poder acceder al sistema.", 
-                "📡", 
-                "#4ade80");
-            
-            document.getElementById('reg-nombre').value = '';
-            document.getElementById('reg-apellido').value = '';
-            document.getElementById('reg-cedula').value = '';
-            document.getElementById('reg-grado').value = '';
-            document.getElementById('reg-correo').value = '';
-            document.getElementById('reg-pass').value = '';
-            
-            const helperCedula = document.getElementById('cedula-helper');
-            if (helperCedula) {
-                helperCedula.textContent = '🔢 Solo números, entre 7 y 8 dígitos';
-                helperCedula.className = 'cedula-helper';
-            }
-            
-            const helperPass = document.getElementById('contrasena-helper');
-            if (helperPass) {
-                helperPass.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
-                helperPass.className = 'contrasena-helper';
-            }
-        })
-        .catch((err) => {
-            console.error('Error en registro:', err);
-            showTacticalAlert("❌ ERROR DE RED", 
-                "No se pudo sincronizar el registro telemático.\n\n" +
-                "Verifique su conexión a Internet e intente nuevamente.", 
-                "❌", 
-                "#ef4444");
+        const fechaRegistro = new Date().toLocaleString('es-VE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
         });
+
+        const datos = {
+            nombre: v_nombre, 
+            apellido: v_apellido, 
+            cedula: v_cedula,
+            grado: v_grado, 
+            correo: v_correo, 
+            componente: v_componente,
+            pass: v_pass, 
+            role: "usuario", 
+            aprobado: false,
+            fechaRegistro: fechaRegistro,
+            timestamp: Date.now()
+        };
+
+        db.ref('usuarios_pendientes/' + v_cedula).set(datos)
+            .then(() => {
+                if (typeof emailjs !== 'undefined') {
+                    return emailjs.send("service_wm4ye18", "template_1600d5d", {
+                        nombre: v_grado + " " + v_nombre + " " + v_apellido,
+                        cedula: v_cedula, 
+                        componente: v_componente, 
+                        reply_to: "joserevilla371@gmail.com"
+                    });
+                }
+            })
+            .then(() => {
+                closeModals();
+                showTacticalAlert("📡 COMUNICACIÓN ENVIADA", 
+                    "Solicitud de acceso transmitida exitosamente.\n\n" +
+                    "El Administrador ha sido notificado para la aprobación.\n" +
+                    "Espere la confirmación para poder acceder al sistema.", 
+                    "📡", 
+                    "#4ade80");
+                
+                document.getElementById('reg-nombre').value = '';
+                document.getElementById('reg-apellido').value = '';
+                document.getElementById('reg-cedula').value = '';
+                document.getElementById('reg-grado').value = '';
+                document.getElementById('reg-correo').value = '';
+                document.getElementById('reg-pass').value = '';
+                
+                const helperCedula = document.getElementById('cedula-helper');
+                if (helperCedula) {
+                    helperCedula.textContent = '🔢 Solo números, entre 7 y 8 dígitos';
+                    helperCedula.className = 'cedula-helper';
+                }
+                
+                const helperPass = document.getElementById('contrasena-helper');
+                if (helperPass) {
+                    helperPass.textContent = '🔐 8 caracteres: letras + números + signos (!@#$%^&*)';
+                    helperPass.className = 'contrasena-helper';
+                }
+            })
+            .catch((err) => {
+                console.error('Error en registro:', err);
+                showErrorGlobal("❌ ERROR DE RED", 
+                    "No se pudo sincronizar el registro telemático.\n\n" +
+                    "Verifique su conexión a Internet e intente nuevamente.", 
+                    err.message, "❌");
+            });
+    });
 }
 
-// ==========================================
-// SISTEMA DE RECUPERACIÓN DE ACCESO
-// ==========================================
-
+// ============================================================
+// ===== SISTEMA DE RECUPERACIÓN DE ACCESO (CORREGIDO) =====
+// ============================================================
 const recuperacionData = {
     correo: '',
     codigo: '',
@@ -1098,8 +1195,6 @@ const recuperacionData = {
     cedula: '',
     usuario: null
 };
-
-const intentosFallidos = {};
 
 function abrirRecuperacion(tipo) {
     closeModals();
@@ -1122,8 +1217,17 @@ function enviarCodigoRecuperacion() {
     const correo = document.getElementById('recuperar-correo').value.trim();
     const infoDiv = document.getElementById('recuperar-info');
     
+    // LIMPIAR MENSAJES ANTERIORES
+    infoDiv.innerHTML = '';
+    
     if (!correo) {
         infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Ingresa tu correo electrónico registrado.</span>';
+        return;
+    }
+    
+    // Validar formato de correo
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+        infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Formato de correo inválido. Ej: usuario@dominio.com</span>';
         return;
     }
     
@@ -1143,10 +1247,7 @@ function enviarCodigoRecuperacion() {
             const cedula = Object.keys(datos)[0];
             const usuario = datos[cedula];
             
-            if (intentosFallidos[cedula] && intentosFallidos[cedula] >= 10) {
-                infoDiv.innerHTML = `<span style="color: #ef4444;">🔒 ACCESO BLOQUEADO: Has superado los 10 intentos fallidos. Contacta al administrador.</span>`;
-                return;
-            }
+            // 🔓 NO VERIFICAMOS BLOQUEO AQUÍ - LA RECUPERACIÓN ES LIBRE
             
             const codigo = Math.floor(100000 + Math.random() * 900000).toString();
             recuperacionData.correo = correo;
@@ -1200,6 +1301,8 @@ function validarCodigoRecuperacion() {
     const codigoIngresado = document.getElementById('codigo-validacion').value.trim();
     const infoDiv = document.getElementById('validacion-info');
     
+    infoDiv.innerHTML = '';
+    
     if (!codigoIngresado || codigoIngresado.length !== 6) {
         infoDiv.innerHTML = '<span style="color: #ef4444;">❌ Ingresa el código de 6 dígitos recibido en tu correo.</span>';
         return;
@@ -1229,6 +1332,7 @@ function validarCodigoRecuperacion() {
         
         addLog(`RECUPERACIÓN: Código validado para ${recuperacionData.correo}`);
     } else {
+        // Solo 3 intentos para el código, pero NO bloquea la cuenta
         recuperacionData.intentos++;
         const restantes = 3 - recuperacionData.intentos;
         if (restantes <= 0) {
@@ -1411,73 +1515,310 @@ function cambiarContraseña() {
         });
 }
 
+// ============================================================
+// ===== LOGIN DE USUARIO (CON MENSAJE EN LÍNEA Y CONTADOR) =====
+// ============================================================
 function handleLogin() {
-    const cedula = document.getElementById('log-cedula').value;
-    const pass = document.getElementById('log-pass').value;
+    const cedula = document.getElementById('log-cedula').value.trim();
+    const pass = document.getElementById('log-pass').value.trim();
+    const errorMsg = document.getElementById('login-error-msg');
     
-    closeModals();
-    
-    if (cedula === "0000" && pass === "admin123") { 
-        guardarSesion("ADMINISTRADOR SUPREMO", "admin");
-        iniciarApp("ADMINISTRADOR SUPREMO", "admin"); 
-        return; 
+    // Limpiar mensaje anterior
+    if (errorMsg) {
+        errorMsg.textContent = '';
+        errorMsg.className = 'login-error-msg';
     }
     
-    if (intentosFallidos[cedula] && intentosFallidos[cedula] >= 10) {
-        showTacticalAlert(
-            "🔒 ACCESO BLOQUEADO",
-            `Has superado los 10 intentos fallidos.\n\nUtiliza la opción "Recuperar acceso" para restablecer tu contraseña.`,
-            "🔒",
-            "#ef4444"
-        );
+    // Validar que la cédula tenga entre 7 y 8 dígitos
+    if (!/^\d{7,8}$/.test(cedula)) {
+        if (errorMsg) {
+            errorMsg.textContent = '❌ La cédula debe tener entre 7 y 8 dígitos numéricos.';
+            errorMsg.className = 'login-error-msg danger';
+        }
         return;
     }
     
+    // Validar formato de contraseña
+    const tieneLetra = /[a-zA-Z]/.test(pass);
+    const tieneNumero = /[0-9]/.test(pass);
+    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(pass);
+    const longitudCorrecta = pass.length === 8;
+    const tieneEspacios = /\s/.test(pass);
+    
+    if (!pass || tieneEspacios || !longitudCorrecta || !tieneLetra || !tieneNumero || !tieneSigno) {
+        if (errorMsg) {
+            errorMsg.textContent = '❌ Contraseña inválida: 8 caracteres, letra+número+símbolo (!@#$%^&*)';
+            errorMsg.className = 'login-error-msg danger';
+        }
+        return;
+    }
+    
+    // ===== VERIFICAR BLOQUEO =====
+    if (verificarBloqueo(cedula)) {
+        if (errorMsg) {
+            errorMsg.textContent = '🔒 CUENTA BLOQUEADA - Usa "Recuperar acceso"';
+            errorMsg.className = 'login-error-msg danger';
+            errorMsg.style.fontWeight = '700';
+        }
+        actualizarContadorIntentos(cedula, 'usuario');
+        return;
+    }
+    
+    // Verificar primero en usuarios aprobados
     db.ref('usuarios_aprobados/' + cedula).once('value').then((snap) => {
         const user = snap.val();
+        
         if (user && user.pass === pass) {
+            // ✅ ÉXITO: Usuario encontrado y contraseña correcta
             delete intentosFallidos[cedula];
-            guardarSesion(user.grado + " " + user.nombre, "usuario");
-            iniciarApp(user.grado + " " + user.nombre, "usuario");
-        } else {
-            if (!intentosFallidos[cedula]) {
-                intentosFallidos[cedula] = 1;
-            } else {
-                intentosFallidos[cedula]++;
+            actualizarContadorIntentos(cedula, 'usuario');
+            
+            // CERRAR MODAL DE LOGIN
+            closeModals();
+            
+            if (errorMsg) {
+                errorMsg.textContent = '✅ Acceso concedido. Cargando sistema...';
+                errorMsg.className = 'login-error-msg success';
             }
-            
-            const intentosRestantes = 10 - intentosFallidos[cedula];
-            
+            guardarSesion(user.grado + " " + user.nombre, "usuario");
+            setTimeout(() => iniciarApp(user.grado + " " + user.nombre, "usuario"), 500);
+        } else if (user && user.pass !== pass) {
+            // ❌ CONTRASEÑA INCORRECTA
+            const restantes = registrarIntentoFallido(cedula, 'usuario');
+            if (restantes !== false) {
+                document.getElementById('log-pass').focus();
+            }
+        } else {
+            // USUARIO NO ENCONTRADO EN APROBADOS - Verificar en pendientes
             db.ref('usuarios_pendientes/' + cedula).once('value').then((p) => {
                 if (p.exists()) {
-                    showTacticalAlert(
-                        "ACCESO RETENIDO", 
-                        `Su cuenta está en la cola de aprobación del Puesto de Mando.\n\nIntentos restantes: ${intentosRestantes}`, 
-                        "⏳", 
-                        "#fbbf24"
-                    );
+                    if (errorMsg) {
+                        errorMsg.textContent = '⏳ Cuenta pendiente de aprobación por el Mando.';
+                        errorMsg.className = 'login-error-msg warning';
+                    }
                 } else {
-                    if (intentosFallidos[cedula] >= 10) {
-                        showTacticalAlert(
-                            "🔒 ACCESO BLOQUEADO",
-                            `Has superado los 10 intentos fallidos.\n\nUtiliza la opción "Recuperar acceso" para restablecer tu contraseña.`,
-                            "🔒",
-                            "#ef4444"
-                        );
-                    } else {
-                        showTacticalAlert(
-                            "ACCESO RECHAZADO", 
-                            `Credenciales incorrectas.\n\nIntentos restantes: ${intentosRestantes}`, 
-                            "🔐", 
-                            "#ef4444"
-                        );
+                    if (errorMsg) {
+                        errorMsg.textContent = '❌ Usuario no registrado. Verifica tu cédula o regístrate.';
+                        errorMsg.className = 'login-error-msg danger';
                     }
                 }
             });
         }
+    }).catch(err => {
+        console.error('Error en login:', err);
+        if (errorMsg) {
+            errorMsg.textContent = '❌ Error de conexión. Verifica tu internet.';
+            errorMsg.className = 'login-error-msg danger';
+        }
     });
 }
 
+// ============================================================
+// ===== LOGIN DE ADMINISTRADOR (CON MENSAJE EN LÍNEA Y CONTADOR) =====
+// ============================================================
+function handleAdminLogin() {
+    const cedula = document.getElementById('admin-log-cedula').value.trim();
+    const pass = document.getElementById('admin-log-pass').value.trim();
+    const errorMsg = document.getElementById('admin-login-error-msg');
+    
+    // Limpiar mensaje anterior
+    if (errorMsg) {
+        errorMsg.textContent = '';
+        errorMsg.className = 'login-error-msg';
+    }
+    
+    // Validar que la cédula tenga entre 7 y 8 dígitos
+    if (!/^\d{7,8}$/.test(cedula)) {
+        if (errorMsg) {
+            errorMsg.textContent = '❌ La cédula debe tener entre 7 y 8 dígitos numéricos.';
+            errorMsg.className = 'login-error-msg danger';
+        }
+        return;
+    }
+    
+    // Validar formato de contraseña
+    const tieneLetra = /[a-zA-Z]/.test(pass);
+    const tieneNumero = /[0-9]/.test(pass);
+    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(pass);
+    const longitudCorrecta = pass.length === 8;
+    const tieneEspacios = /\s/.test(pass);
+    
+    if (!pass || tieneEspacios || !longitudCorrecta || !tieneLetra || !tieneNumero || !tieneSigno) {
+        if (errorMsg) {
+            errorMsg.textContent = '❌ Contraseña inválida: 8 caracteres, letra+número+símbolo (!@#$%^&*)';
+            errorMsg.className = 'login-error-msg danger';
+        }
+        return;
+    }
+    
+    // ===== VERIFICAR BLOQUEO =====
+    if (verificarBloqueo(cedula)) {
+        if (errorMsg) {
+            errorMsg.textContent = '🔒 CUENTA DE MANDO BLOQUEADA - Usa "Recuperar acceso"';
+            errorMsg.className = 'login-error-msg danger';
+            errorMsg.style.fontWeight = '700';
+        }
+        actualizarContadorIntentos(cedula, 'admin');
+        return;
+    }
+    
+    // Verificar en administradores
+    db.ref('administradores/' + cedula).once('value').then((snap) => {
+        const admin = snap.val();
+        
+        if (admin && admin.pass === pass) {
+            // ✅ ÉXITO: Admin encontrado y contraseña correcta
+            delete intentosFallidos[cedula];
+            actualizarContadorIntentos(cedula, 'admin');
+            
+            // CERRAR MODAL DE LOGIN
+            closeModals();
+            
+            if (errorMsg) {
+                errorMsg.textContent = '✅ Acceso de Mando concedido. Cargando sistema...';
+                errorMsg.className = 'login-error-msg success';
+            }
+            guardarSesion(admin.grado + " " + admin.nombre, "admin");
+            setTimeout(() => iniciarApp(admin.grado + " " + admin.nombre, "admin"), 500);
+        } else if (admin && admin.pass !== pass) {
+            // ❌ CONTRASEÑA INCORRECTA
+            const restantes = registrarIntentoFallido(cedula, 'admin');
+            if (restantes !== false) {
+                document.getElementById('admin-log-pass').focus();
+            }
+        } else {
+            // ADMIN NO ENCONTRADO - Verificar en pendientes
+            db.ref('administradores_pendientes/' + cedula).once('value').then((p) => {
+                if (p.exists()) {
+                    if (errorMsg) {
+                        errorMsg.textContent = '⏳ Solicitud de Mando pendiente de aprobación.';
+                        errorMsg.className = 'login-error-msg warning';
+                    }
+                } else {
+                    if (errorMsg) {
+                        errorMsg.textContent = '❌ Mando no registrado. Verifica tu cédula o regístrate.';
+                        errorMsg.className = 'login-error-msg danger';
+                    }
+                }
+            });
+        }
+    }).catch(err => {
+        console.error('Error en login admin:', err);
+        if (errorMsg) {
+            errorMsg.textContent = '❌ Error de conexión. Verifica tu internet.';
+            errorMsg.className = 'login-error-msg danger';
+        }
+    });
+}
+
+// ============================================================
+// ===== REGISTRO DE ADMINISTRADOR =====
+// ============================================================
+function handleAdminRegistro() {
+    const cedula = document.getElementById('admin-reg-cedula').value.trim();
+    const nombre = document.getElementById('admin-reg-nombre').value.trim();
+    const apellido = document.getElementById('admin-reg-apellido').value.trim();
+    const grado = document.getElementById('admin-reg-grado').value;
+    const correo = document.getElementById('admin-reg-correo').value.trim();
+    const componente = document.getElementById('admin-reg-componente').value;
+    const pass = document.getElementById('admin-reg-pass').value.trim();
+
+    if (!cedula || !pass || !nombre || !apellido || !grado || !correo) {
+        showErrorGlobal("REGISTRO FALLIDO", "Todos los campos son obligatorios. Complete la información requerida.", "", "⚠️");
+        return;
+    }
+
+    if (!/^\d{7,8}$/.test(cedula)) {
+        showErrorGlobal("CÉDULA INVÁLIDA", "La cédula debe contener solo números y tener entre 7 y 8 dígitos.", "", "⚠️");
+        return;
+    }
+
+    const tieneLetra = /[a-zA-Z]/.test(pass);
+    const tieneNumero = /[0-9]/.test(pass);
+    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(pass);
+    const longitudCorrecta = pass.length === 8;
+    const tieneEspacios = /\s/.test(pass);
+    
+    if (tieneEspacios) {
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", "La contraseña no puede contener espacios en blanco.", "", "⚠️");
+        return;
+    }
+    
+    if (!longitudCorrecta) {
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", `La contraseña debe tener exactamente 8 caracteres (actual: ${pass.length}).`, "", "⚠️");
+        return;
+    }
+    
+    if (!tieneLetra) {
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos una letra (A-Z, a-z).", "", "⚠️");
+        return;
+    }
+    
+    if (!tieneNumero) {
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un número (0-9).", "", "⚠️");
+        return;
+    }
+    
+    if (!tieneSigno) {
+        showErrorGlobal("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un signo (!@#$%^&*).", "", "⚠️");
+        return;
+    }
+
+    if (grado === "") {
+        showErrorGlobal("JERARQUÍA REQUERIDA", "Debe seleccionar una jerarquía.", "", "⚠️");
+        return;
+    }
+
+    verificarCedulaRegistrada(cedula).then(registrada => {
+        if (registrada) {
+            showErrorGlobal("USUARIO YA REGISTRADO", 
+                "⚠️ La cédula ingresada ya se encuentra registrada en el sistema.\n\n" +
+                "No es posible registrar un nuevo Mando con una cédula ya existente.", 
+                "Verifique la cédula e intente nuevamente.", "⚠️");
+            return;
+        }
+
+        const datos = { nombre, apellido, cedula, grado, correo, componente, pass, role: "admin", aprobado: false };
+        db.ref('administradores_pendientes/' + cedula).set(datos)
+            .then(() => {
+                const mensajeTelegram = `🚨 *SOLICITUD DE MANDO SITAC VEN*\n\n` +
+                    `Un usuario requiere privilegios de *ADMINISTRADOR*:\n` +
+                    `• *Identificación:* ${grado} ${nombre} ${apellido}\n` +
+                    `• *C.I / Credencial:* ${cedula}\n` +
+                    `• *Componente:* ${componente}\n` +
+                    `• *Correo:* ${correo}\n\n` +
+                    `⚡ _Seleccione una acción inmediata desde este terminal:_`;
+
+                const botonesInteractivos = {
+                    inline_keyboard: [[
+                        { text: "🟢 APROBAR MANDO", callback_data: `approve_admin:${cedula}` },
+                        { text: "🔴 RECHAZAR", callback_data: `reject_admin:${cedula}` }
+                    ]]
+                };
+
+                return fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: mensajeTelegram,
+                        parse_mode: 'Markdown',
+                        reply_markup: botonesInteractivos
+                    })
+                });
+            })
+            .then(() => {
+                closeModals();
+                showTacticalAlert("TRANSMISIÓN PERIMETRAL", "Petición de comando enviada al dispositivo móvil del Administrador Supremo. Esperando aprobación directa por Telegram.", "📱", "#fbbf24");
+                addLog(`SEGURIDAD: Alerta con botones interactivos enviada para CI: ${cedula}.`);
+            })
+            .catch(e => showErrorGlobal("ERROR DE CANAL", "Fallo crítico en el enlace telemático móvil.", e.message, "❌"));
+    });
+}
+
+// ============================================================
+// ===== FUNCIONES DE GESTIÓN DE USUARIOS Y REPORTES =====
+// ============================================================
 function deponerPersonal(id, rutaNodo) {
     showTacticalConfirm("ELIMINAR MIEMBRO", `¿Confirma la baja y revocación absoluta de la C.I: ${id} del sistema central?`, () => {
         db.ref(`${rutaNodo}/${id}`).remove()
@@ -1492,7 +1833,7 @@ function aprobarUsuarioPendiente(cedula) {
     db.ref('usuarios_pendientes/' + cedula).once('value').then((snap) => {
         const user = snap.val();
         if (!user) {
-            showTacticalAlert("ERROR", "No se encontraron datos del usuario.", "❌", "#ef4444");
+            showErrorGlobal("ERROR", "No se encontraron datos del usuario.", "", "❌");
             return;
         }
         
@@ -1536,7 +1877,7 @@ function rechazarUsuarioPendiente(cedula) {
     db.ref('usuarios_pendientes/' + cedula).once('value').then((snap) => {
         const user = snap.val();
         if (!user) {
-            showTacticalAlert("ERROR", "No se encontraron datos del usuario.", "❌", "#ef4444");
+            showErrorGlobal("ERROR", "No se encontraron datos del usuario.", "", "❌");
             return;
         }
         
@@ -1573,170 +1914,11 @@ function rechazarUsuarioPendiente(cedula) {
     });
 }
 
-function handleAdminLogin() {
-    const cedula = document.getElementById('admin-log-cedula').value;
-    const pass = document.getElementById('admin-log-pass').value;
-    
-    closeModals();
-    
-    if (cedula === "0000" && pass === "admin123") { 
-        guardarSesion("ADMINISTRADOR SUPREMO", "admin");
-        iniciarApp("ADMINISTRADOR SUPREMO", "admin"); 
-        return; 
-    }
-    
-    if (intentosFallidos[cedula] && intentosFallidos[cedula] >= 10) {
-        showTacticalAlert(
-            "🔒 ACCESO DE MANDO BLOQUEADO",
-            `Has superado los 10 intentos fallidos.\n\nUtiliza la opción "Recuperar acceso" para restablecer tu contraseña.`,
-            "🔒",
-            "#ef4444"
-        );
-        return;
-    }
-    
-    db.ref('administradores/' + cedula).once('value').then((snap) => {
-        const admin = snap.val();
-        if (admin && admin.pass === pass) {
-            delete intentosFallidos[cedula];
-            guardarSesion(admin.grado + " " + admin.nombre, "admin");
-            iniciarApp(admin.grado + " " + admin.nombre, "admin");
-        } else {
-            if (!intentosFallidos[cedula]) {
-                intentosFallidos[cedula] = 1;
-            } else {
-                intentosFallidos[cedula]++;
-            }
-            
-            const intentosRestantes = 10 - intentosFallidos[cedula];
-            
-            db.ref('administradores_pendientes/' + cedula).once('value').then((p) => {
-                if (p.exists()) {
-                    showTacticalAlert(
-                        "ACCESO EN COLISIÓN", 
-                        `Falta Aprobación Móvil: Su rango se encuentra en revisión.\n\nIntentos restantes: ${intentosRestantes}`, 
-                        "🔒", 
-                        "#ef4444"
-                    );
-                } else {
-                    if (intentosFallidos[cedula] >= 10) {
-                        showTacticalAlert(
-                            "🔒 ACCESO DE MANDO BLOQUEADO",
-                            `Has superado los 10 intentos fallidos.\n\nUtiliza la opción "Recuperar acceso" para restablecer tu contraseña.`,
-                            "🔒",
-                            "#ef4444"
-                        );
-                    } else {
-                        showTacticalAlert(
-                            "DENEGADO", 
-                            `Identificación de Mando Inválida.\n\nIntentos restantes: ${intentosRestantes}`, 
-                            "🔒", 
-                            "#ef4444"
-                        );
-                    }
-                }
-            });
-        }
-    });
-}
-
-function handleAdminRegistro() {
-    const cedula = document.getElementById('admin-reg-cedula').value.trim();
-    const nombre = document.getElementById('admin-reg-nombre').value.trim();
-    const apellido = document.getElementById('admin-reg-apellido').value.trim();
-    const grado = document.getElementById('admin-reg-grado').value;
-    const correo = document.getElementById('admin-reg-correo').value.trim();
-    const componente = document.getElementById('admin-reg-componente').value;
-    const pass = document.getElementById('admin-reg-pass').value.trim();
-
-    if (!cedula || !pass || !nombre || !apellido || !grado || !correo) {
-        showTacticalAlert("REGISTRO FALLIDO", "Todos los campos son obligatorios. Complete la información requerida.", "⚠️", "#fbbf24");
-        return;
-    }
-
-    if (!/^\d{7,8}$/.test(cedula)) {
-        showTacticalAlert("CÉDULA INVÁLIDA", "La cédula debe contener solo números y tener entre 7 y 8 dígitos.", "⚠️", "#fbbf24");
-        return;
-    }
-
-    const tieneLetra = /[a-zA-Z]/.test(pass);
-    const tieneNumero = /[0-9]/.test(pass);
-    const tieneSigno = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]/.test(pass);
-    const longitudCorrecta = pass.length === 8;
-    const tieneEspacios = /\s/.test(pass);
-    
-    if (tieneEspacios) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña no puede contener espacios en blanco.", "⚠️", "#fbbf24");
-        return;
-    }
-    
-    if (!longitudCorrecta) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", `La contraseña debe tener exactamente 8 caracteres (actual: ${pass.length}).`, "⚠️", "#fbbf24");
-        return;
-    }
-    
-    if (!tieneLetra) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos una letra (A-Z, a-z).", "⚠️", "#fbbf24");
-        return;
-    }
-    
-    if (!tieneNumero) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un número (0-9).", "⚠️", "#fbbf24");
-        return;
-    }
-    
-    if (!tieneSigno) {
-        showTacticalAlert("CONTRASEÑA INVÁLIDA", "La contraseña debe contener al menos un signo (!@#$%^&*).", "⚠️", "#fbbf24");
-        return;
-    }
-
-    if (grado === "") {
-        showTacticalAlert("JERARQUÍA REQUERIDA", "Debe seleccionar una jerarquía.", "⚠️", "#fbbf24");
-        return;
-    }
-
-    const datos = { nombre, apellido, cedula, grado, correo, componente, pass, role: "admin", aprobado: false };
-    db.ref('administradores_pendientes/' + cedula).set(datos)
-        .then(() => {
-            const mensajeTelegram = `🚨 *SOLICITUD DE MANDO SITAC VEN*\n\n` +
-                `Un usuario requiere privilegios de *ADMINISTRADOR*:\n` +
-                `• *Identificación:* ${grado} ${nombre} ${apellido}\n` +
-                `• *C.I / Credencial:* ${cedula}\n` +
-                `• *Componente:* ${componente}\n` +
-                `• *Correo:* ${correo}\n\n` +
-                `⚡ _Seleccione una acción inmediata desde este terminal:_`;
-
-            const botonesInteractivos = {
-                inline_keyboard: [[
-                    { text: "🟢 APROBAR MANDO", callback_data: `approve_admin:${cedula}` },
-                    { text: "🔴 RECHAZAR", callback_data: `reject_admin:${cedula}` }
-                ]]
-            };
-
-            return fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: CHAT_ID,
-                    text: mensajeTelegram,
-                    parse_mode: 'Markdown',
-                    reply_markup: botonesInteractivos
-                })
-            });
-        })
-        .then(() => {
-            closeModals();
-            showTacticalAlert("TRANSMISIÓN PERIMETRAL", "Petición de comando enviada al dispositivo móvil del Administrador Supremo. Esperando aprobación directa por Telegram.", "📱", "#fbbf24");
-            addLog(`SEGURIDAD: Alerta con botones interactivos enviada para CI: ${cedula}.`);
-        })
-        .catch(e => showTacticalAlert("ERROR DE CANAL", "Fallo crítico en el enlace telemático móvil.", "❌", "#ef4444"));
-}
-
 function enviarReporteMando() {
     const asunto = document.getElementById('rep-asunto').value;
     const mensaje = document.getElementById('rep-mensaje').value;
     if (!asunto || !mensaje) {
-        showTacticalAlert("INFORME VACÍO", "Escriba el asunto y cuerpo antes de la transmisión.", "📝", "#fbbf24");
+        showErrorGlobal("INFORME VACÍO", "Escriba el asunto y cuerpo antes de la transmisión.", "", "📝");
         return;
     }
     const report = { emisor: currentUserRank, asunto: asunto, mensaje: mensaje, fecha: new Date().toLocaleString() };
@@ -1748,7 +1930,7 @@ function enviarReporteMando() {
             showTacticalAlert("ENVIADO", "Reporte transmitido por canal seguro.", "🚀", "#4ade80");
             addLog("COMUNICACIONES: Reporte enviado al puesto de comando central.");
         })
-        .catch(e => showTacticalAlert("ERROR", "Fallo de enlace satelital.", "❌", "#ef4444"));
+        .catch(e => showErrorGlobal("ERROR", "Fallo de enlace satelital.", e.message, "❌"));
 }
 
 function escucharBuzonReportes() {
@@ -2033,7 +2215,7 @@ function escucharRegistroPersonal() {
 }
 
 // ============================================================
-// ===== FUNCIÓN PARA GENERAR POPUP PROFESIONAL =====
+// ===== FUNCIONES DE MAPA Y MARKERS =====
 // ============================================================
 function generarPopupHTML(markerId, latlng, config) {
     const color = config.faction === 'ALIADO' ? '#4ade80' : '#ef4444';
@@ -2159,9 +2341,6 @@ function generarPopupHTML(markerId, latlng, config) {
     return html;
 }
 
-// ============================================================
-// ===== FUNCIÓN MEJORADA DE DESPLAZAMIENTO CON VALIDACIÓN =====
-// ============================================================
 function abrirModalDesplazamiento(markerId, lat, lng) {
     pendingMoveMarkerId = markerId;
     document.getElementById('destino-coordenada').value = '';
@@ -2174,13 +2353,13 @@ function ejecutarDesplazamiento() {
     const tiempoSeg = parseInt(document.getElementById('desplazamiento-tiempo').value) || 5;
     
     if (!destCoordStr.trim()) {
-        showTacticalAlert("DESTINO REQUERIDO", "Ingrese las coordenadas de destino.", "⚠️", "#fbbf24");
+        showErrorGlobal("DESTINO REQUERIDO", "Ingrese las coordenadas de destino.", "Ej: 11.389886, -69.675880", "⚠️");
         return;
     }
     
     const coords = parsearCoordenadas(destCoordStr);
     if (!coords) {
-        showTacticalAlert("FORMATO INCORRECTO", "Use formato: latitud, longitud", "⚠️", "#fbbf24");
+        showErrorGlobal("FORMATO INCORRECTO", "Use formato: latitud, longitud", "Ej: 11.389886, -69.675880", "⚠️");
         return;
     }
     
@@ -2189,14 +2368,14 @@ function ejecutarDesplazamiento() {
             const mensaje = pais 
                 ? `🌍 Ubicación detectada: ${pais}\n\n⛔ OPERACIÓN CANCELADA: Solo se permiten operaciones dentro del territorio venezolano.`
                 : `⛔ OPERACIÓN CANCELADA: No se pudo verificar la ubicación.`;
-            showTacticalAlert("DESTINO NO AUTORIZADO", mensaje, "🚫", "#ef4444");
+            showErrorGlobal("DESTINO NO AUTORIZADO", mensaje, "Verifique las coordenadas.", "🚫");
             addLog(`❌ DENEGADO: Intento de desplazamiento a [${coords.lat}, ${coords.lng}]`);
             return;
         }
         
         const marker = window.activeMarkers[pendingMoveMarkerId];
         if (!marker) {
-            showTacticalAlert("ERROR", "No se encontró el marcador a desplazar.", "❌", "#ef4444");
+            showErrorGlobal("ERROR", "No se encontró el marcador a desplazar.", "", "❌");
             return;
         }
         
@@ -2207,20 +2386,20 @@ function ejecutarDesplazamiento() {
         const esAgua = estaEnAgua(coords.lat, coords.lng);
         
         if (esBarco && !esAgua) {
-            showTacticalAlert("RESTRICCIÓN NAVAL", 
-                "🌊 OPERACIÓN CANCELADA: Los barcos solo pueden desplazarse a AGUAS TERRITORIALES.\n\n" +
+            showErrorGlobal("RESTRICCIÓN NAVAL", 
+                "🌊 Los barcos solo pueden desplazarse a AGUAS TERRITORIALES.\n\n" +
                 "📍 El destino seleccionado está en TIERRA FIRME.\n" +
                 `📌 Coordenadas: ${coords.lat}, ${coords.lng}`,
-                "🚫", "#fbbf24");
+                "💡 Prueba con coordenadas en el mar (ej: 11.5, -69.0)", "🚫");
             return;
         }
         
         if (esTanque && esAgua) {
-            showTacticalAlert("RESTRICCIÓN BLINDADA", 
-                "🚜 OPERACIÓN CANCELADA: Los tanques solo pueden desplazarse a TIERRA FIRME.\n\n" +
+            showErrorGlobal("RESTRICCIÓN BLINDADA", 
+                "🚜 Los tanques solo pueden desplazarse a TIERRA FIRME.\n\n" +
                 "📍 El destino seleccionado está en AGUA.\n" +
                 `📌 Coordenadas: ${coords.lat}, ${coords.lng}`,
-                "🚫", "#fbbf24");
+                "💡 Prueba con coordenadas en tierra (ej: 10.5, -66.9)", "🚫");
             return;
         }
         
@@ -2237,13 +2416,10 @@ function ejecutarDesplazamiento() {
     });
 }
 
-// ============================================================
-// ===== FUNCIÓN PARA INICIAR DESPLAZAMIENTO =====
-// ============================================================
 function iniciarDesplazamiento(markerId, destLat, destLng, duracionSeg) {
     const marker = window.activeMarkers[markerId];
     if (!marker) {
-        showTacticalAlert("ERROR", "No se encontró el marcador a desplazar.", "❌", "#ef4444");
+        showErrorGlobal("ERROR", "No se encontró el marcador a desplazar.", "", "❌");
         return;
     }
     
@@ -2268,13 +2444,10 @@ function iniciarDesplazamiento(markerId, destLat, destLng, duracionSeg) {
         }
     }).catch(err => {
         console.error("Error guardando movimiento:", err);
-        showTacticalAlert("ERROR", "No se pudo iniciar el movimiento.", "❌", "#ef4444");
+        showErrorGlobal("ERROR", "No se pudo iniciar el movimiento.", err.message, "❌");
     });
 }
 
-// ============================================================
-// ===== FUNCIÓN PARA ACTUALIZAR POPUP DEL MARKER =====
-// ============================================================
 function actualizarPopupMarker(markerId, lat, lng) {
     const marker = window.activeMarkers[markerId];
     if (!marker) return;
@@ -2287,9 +2460,6 @@ function actualizarPopupMarker(markerId, lat, lng) {
     marker.config = config;
 }
 
-// ============================================================
-// ===== FUNCIÓN PARA EJECUTAR ANIMACIÓN =====
-// ============================================================
 function ejecutarAnimacionMovimiento(markerId, data) {
     const { startLat, startLng, destLat, destLng, startTime, duracionSeg } = data;
     const marker = window.activeMarkers[markerId];
@@ -2412,9 +2582,6 @@ function limpiarLineasMovimiento(markerId) {
     }
 }
 
-// ============================================================
-// ===== LISTEN TO CLOUD - ESCUCHAR CAMBIOS EN TIEMPO REAL =====
-// ============================================================
 function listenToCloud() {
     db.ref('mision_activa/puntos').off('child_added');
     db.ref('mision_activa/puntos').off('child_changed');
@@ -2558,9 +2725,6 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ============================================================
-// ===== FUNCIÓN CREATE MARKER MEJORADA CON ICONOS PROFESIONALES =====
-// ============================================================
 function createMarker(latlng, config, id) {
     if (window.activeMarkers[id]) return;
     
@@ -2696,7 +2860,7 @@ async function exportTacticalPDF() {
             }
         } catch (err) {
             addLog("ERROR: Fallo en la exportación.");
-            showTacticalAlert("ERROR DE EXPORTACIÓN", "Fallo al procesar el canvas del mapa táctico.", "❌", "#ef4444");
+            showErrorGlobal("ERROR DE EXPORTACIÓN", "Fallo al procesar el canvas del mapa táctico.", err.message, "❌");
         }
     }, 500);
 }
@@ -2844,7 +3008,7 @@ function actualizarEstadisticas() {
         
     }).catch(error => {
         console.error("Error al cargar estadísticas:", error);
-        showTacticalAlert("ERROR", "No se pudieron cargar las estadísticas.", "❌", "#ef4444");
+        showErrorGlobal("ERROR", "No se pudieron cargar las estadísticas.", error.message, "❌");
     });
 }
 

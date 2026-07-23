@@ -10,7 +10,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
 
-    <!-- ===== NUEVAS FUENTES PROFESIONALES ===== -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -216,10 +215,119 @@
             background: #fbbf24;
             border-radius: 3px;
         }
+
+        /* ===== CONTADOR DE INTENTOS ===== */
+        .intentos-restantes {
+            font-size: 0.75rem;
+            margin-top: 8px;
+            text-align: center;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            min-height: 22px;
+            letter-spacing: 0.5px;
+        }
+        .intentos-restantes.success {
+            color: #4ade80;
+        }
+        .intentos-restantes.warning {
+            color: #fbbf24;
+        }
+        .intentos-restantes.danger {
+            color: #ef4444;
+        }
+
+        /* ===== ESTILOS PARA MENSAJES DE ERROR EN LOGIN ===== */
+        .login-error-msg {
+            font-size: 0.75rem;
+            min-height: 24px;
+            margin-top: -5px;
+            margin-bottom: 10px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .login-error-msg.success {
+            color: #4ade80;
+        }
+        .login-error-msg.warning {
+            color: #fbbf24;
+        }
+        .login-error-msg.danger {
+            color: #ef4444;
+        }
+
+        /* ===== MODAL DE ERROR GLOBAL ===== */
+        #modal-error-global {
+            display: none;
+            position: fixed;
+            z-index: 99999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(8px);
+        }
+        #modal-error-global .modal-content {
+            max-width: 450px;
+            margin: 15% auto;
+            border: 2px solid #ef4444 !important;
+            text-align: center;
+        }
+        #modal-error-global .modal-content h2 {
+            color: #ef4444;
+            border-bottom-color: #ef4444;
+        }
+        #modal-error-global .modal-content .error-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        #modal-error-global .modal-content .error-message {
+            color: #f1f5f9;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin: 15px 0;
+            font-family: 'Inter', sans-serif;
+            white-space: pre-line;
+        }
+        #modal-error-global .modal-content .error-sub {
+            color: #94a3b8;
+            font-size: 0.75rem;
+            margin-top: 10px;
+            font-family: 'Inter', sans-serif;
+        }
+        #modal-error-global .modal-content .btn-error {
+            background: #ef4444 !important;
+            color: #fff !important;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            margin-top: 15px;
+            transition: all 0.2s ease;
+        }
+        #modal-error-global .modal-content .btn-error:hover {
+            background: #dc2626 !important;
+            transform: scale(1.02);
+        }
     </style>
 </head>
 
 <body>
+
+    <!-- ===== MODAL DE ERROR GLOBAL ===== -->
+    <div id="modal-error-global">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarErrorGlobal()">&times;</span>
+            <div class="error-icon" id="error-icon">❌</div>
+            <h2 id="error-title">ERROR</h2>
+            <div class="error-message" id="error-message">Ha ocurrido un error.</div>
+            <div class="error-sub" id="error-sub"></div>
+            <button class="btn-error" onclick="cerrarErrorGlobal()">ACEPTAR</button>
+        </div>
+    </div>
 
     <button id="menu-toggle" style="display: none;" onclick="toggleSidebar()">☰</button>
 
@@ -308,7 +416,7 @@
         </div>
     </div>
 
-    <!-- Modal Login -->
+    <!-- ===== MODAL LOGIN USUARIO ===== -->
     <div id="modal-login" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModals()">&times;</span>
@@ -317,11 +425,15 @@
                 <h2>ACCESO AL SISTEMA</h2>
             </div>
             <span class="input-label">NÚMERO DE CÉDULA / USUARIO</span>
-            <input type="text" id="log-cedula" placeholder="">
+            <input type="text" id="log-cedula" placeholder="Ej: 12345678" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')">
             <span class="input-label">CLAVE DE ACCESO</span>
-            <input type="password" id="log-pass" placeholder="">
+            <input type="password" id="log-pass" placeholder="Ej: Passw0rd!" maxlength="8" oninput="this.value=this.value.trim()">
+            <!-- ===== MENSAJE DE ERROR EN LÍNEA PARA USUARIO ===== -->
+            <div id="login-error-msg" class="login-error-msg"></div>
             <button class="btn-highlight" onclick="handleLogin()">INICIAR PROTOCOLO DE ACCESO</button>
-            <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px dashed #334155;">
+            <!-- ===== CONTADOR DE INTENTOS USUARIO ===== -->
+            <div id="login-intentos" class="intentos-restantes"></div>
+            <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #334155;">
                 <a onclick="abrirRecuperacion('usuario')" style="color: #94a3b8; font-size: 0.7rem; cursor: pointer; text-decoration: none; transition: color 0.3s; letter-spacing: 1px;">
                     <i class="fa-solid fa-key"></i> ¿Olvidaste tu acceso? Recupéralo aquí
                 </a>
@@ -329,16 +441,20 @@
         </div>
     </div>
 
-    <!-- Modal Administrador - ACCESO DE MANDO (Login) -->
+    <!-- ===== MODAL LOGIN ADMINISTRADOR ===== -->
     <div id="modal-admin-login" class="modal">
         <div class="modal-content" style="border: 2px solid #fbbf24 !important;">
             <span class="close" onclick="closeModals()">&times;</span>
             <h2 style="color: #fbbf24;">ACCESO DE MANDO</h2>
             <span class="input-label">ID ADMINISTRADOR / CÉDULA</span>
-            <input type="text" id="admin-log-cedula" placeholder="Cédula Admin">
+            <input type="text" id="admin-log-cedula" placeholder="Cédula Admin" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')">
             <span class="input-label">CONTRASEÑA</span>
-            <input type="password" id="admin-log-pass" placeholder="Contraseña">
+            <input type="password" id="admin-log-pass" placeholder="Contraseña" maxlength="8" oninput="this.value=this.value.trim()">
+            <!-- ===== MENSAJE DE ERROR EN LÍNEA PARA ADMIN ===== -->
+            <div id="admin-login-error-msg" class="login-error-msg"></div>
             <button class="btn-highlight" onclick="handleAdminLogin()">ENTRAR COMO ADMIN</button>
+            <!-- ===== CONTADOR DE INTENTOS ADMIN ===== -->
+            <div id="admin-login-intentos" class="intentos-restantes"></div>
 
             <div class="admin-reg-link">
                 <a onclick="abrirModalRegistroMando()">
@@ -374,7 +490,7 @@
             
             <div id="validar-codigo-section" style="display: none; margin-top: 15px; border-top: 1px dashed #334155; padding-top: 15px;">
                 <span class="input-label">CÓDIGO DE 6 DÍGITOS</span>
-                <input type="text" id="codigo-validacion" placeholder="Ej: 123456" maxlength="6" style="text-align: center; font-size: 1.2rem; letter-spacing: 4px;">
+                <input type="text" id="codigo-validacion" placeholder="Ej: 123456" maxlength="6" style="text-align: center; font-size: 1.2rem; letter-spacing: 4px;" oninput="this.value=this.value.replace(/\D/g,'')">
                 <button class="btn-highlight" style="background: #4ade80 !important; border-color: #4ade80 !important; color: #000 !important; width: 100%;" onclick="validarCodigoRecuperacion()">
                     ✅ VALIDAR CÓDIGO
                 </button>
@@ -394,14 +510,14 @@
             </div>
             
             <span class="input-label">CÉDULA / USUARIO</span>
-            <input type="text" id="cambiar-pass-cedula" placeholder="Tu cédula de identidad">
+            <input type="text" id="cambiar-pass-cedula" placeholder="Tu cédula de identidad" readonly style="background: #1e293b; opacity: 0.7;">
             
             <span class="input-label">NUEVA CONTRASEÑA</span>
             <input type="password" id="cambiar-pass-nueva" placeholder="Ej: Passw0rd!" maxlength="8" oninput="validarContrasenaRecuperacion(this)">
             <div id="contrasena-helper-recuperacion" class="contrasena-helper">🔐 8 caracteres: letras + números + signos (!@#$%^&*)</div>
             
             <span class="input-label">REPETIR CONTRASEÑA</span>
-            <input type="password" id="cambiar-pass-repetir" placeholder="Repite la contraseña" oninput="verificarCoincidenciaContrasena()">
+            <input type="password" id="cambiar-pass-repetir" placeholder="Repite la contraseña" maxlength="8" oninput="verificarCoincidenciaContrasena()">
             <div id="repetir-helper" class="contrasena-helper"></div>
             
             <button class="btn-highlight" style="background: #4ade80 !important; border-color: #4ade80 !important; color: #000 !important; width: 100%;" onclick="cambiarContraseña()">
@@ -734,7 +850,7 @@
         </div>
     </div>
 
-    <!-- MODAL ALERTA TÁCTICA -->
+    <!-- MODAL ALERTA TÁCTICA (SOLO ADMIN) -->
     <div id="modal-alerta-tactica" class="modal" style="z-index: 9999;">
         <div class="modal-content alert-frame" style="max-width: 420px; margin: 12% auto; text-align: center;">
             <div id="alert-tactical-icon" style="font-size: 40px; margin-bottom: 15px;">⚠️</div>
